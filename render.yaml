@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: movie-night-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python main.py
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false
