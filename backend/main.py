@@ -1,12 +1,13 @@
-
 # -*- coding: utf-8 -*-
 
 import os
-import time
-import uuid
 import sqlite3
-from functools import wraps
+import uuid
+import time
+import secrets
 from pathlib import Path
+from datetime import datetime
+from functools import wraps
 
 from flask import (
     Flask,
@@ -14,48 +15,32 @@ from flask import (
     jsonify,
     send_from_directory
 )
+
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import (
+    SocketIO,
+    emit,
+    join_room,
+    leave_room
+)
 
 
-# =========================================================
-# CONFIG
+# ========================================================= # CONFIG
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR.parent / "uploads"
-DB_PATH = BASE_DIR / "database.db"
-
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = BASE_DIR / "database.db"
 
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 5000))
 
-# رمز مدیریت را در Termux با متغیر محیطی تنظیم کن:
-# export ADMIN_PASSWORD='رمز شما'
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
-
-ADMIN_TOKENS = set()
-
-FIXED_MEMBERS = [
-    "مهدی",
-    "راستین",
-    "امیرعلی",
-    "مهنا",
-    "فاطمه"
-]
-
-MAIN_ROOM_ID = "MOVIE4"
-MAX_ROOM_MEMBERS = 5
-
-ALLOWED_VIDEO_EXTENSIONS = {
-    ".mp4",
-    ".webm",
-    ".mkv",
-    ".mov",
-    ".m4v",
-    ".avi"
-}
+ADMIN_PASSWORD = os.environ.get(
+    "ADMIN_PASSWORD",
+    "Mahdi1646"
+)
 
 FRONTEND_ORIGINS = [
     item.strip()
@@ -66,20 +51,84 @@ FRONTEND_ORIGINS = [
     if item.strip()
 ]
 
+MAIN_ROOM = "GAME_ROOM"
 
+MAX_PLAYERS = 5
+
+MAX_CHAT_MESSAGES = 200
+
+ALLOWED_IMAGE_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".gif"
+}
+
+
+# ========================================================= # FIXED PLAYERS
 # =========================================================
-# FLASK
+
+PLAYERS = {
+    "mehdi": {
+        "username": "mehdi",
+        "display_name": "مهدی",
+        "role": "admin",
+        "emoji": "👑"
+    },
+
+    "rastin": {
+        "username": "rastin",
+        "display_name": "راستین",
+        "role": "player",
+        "emoji": "🎮"
+    },
+
+    "amirali": {
+        "username": "amirali",
+        "display_name": "امیرعلی",
+        "role": "player",
+        "emoji": "🎮"
+    },
+
+    "mahna": {
+        "username": "mahna",
+        "display_name": "مهنا",
+        "role": "player",
+        "emoji": "🎮"
+    },
+
+    "fatemeh": {
+        "username": "fatemeh",
+        "display_name": "فاطمه",
+        "role": "player",
+        "emoji": "🎮"
+    }
+}
+
+
+# ========================================================= # FLASK
 # =========================================================
 
 app = Flask(__name__)
 
-app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024 * 1024
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    secrets.token_hex(32)
+)
+
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+
 
 CORS(
     app,
-    resources={r"/api/*": {"origins": FRONTEND_ORIGINS}},
-    supports_credentials=False
+    resources={
+        r"/api/*": {
+            "origins": FRONTEND_ORIGINS
+        }
+    }
 )
+
 
 socketio = SocketIO(
     app,
@@ -88,214 +137,452 @@ socketio = SocketIO(
 )
 
 
-# =========================================================
-# DATABASE
+# ========================================================= # DATABASE
 # =========================================================
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=20
+    )
+
     conn.row_factory = sqlite3.Row
+
     return conn
 
 
 def init_db():
+
     conn = get_db()
 
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS movies (
+        CREATE TABLE IF NOT EXISTS players (
+            username TEXT PRIMARY KEY,
+            display_name TEXT NOT NULL,
+            avatar_url TEXT DEFAULT '',
+            role TEXT DEFAULT 'player',
+            blocked INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            year TEXT DEFAULT '',
-            genre TEXT DEFAULT '',
-            poster TEXT DEFAULT '',
-            video TEXT NOT NULL,
+            username TEXT NOT NULL,
+            display_name TEXT DEFAULT '',
+            message TEXT DEFAULT '',
+            is_image INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS logs (
+        CREATE TABLE IF NOT EXISTS scenarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            action TEXT NOT NULL,
+            game_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            data TEXT DEFAULT '{}',
+            enabled INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            icon TEXT DEFAULT '🎮',
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS rooms (
+            id TEXT PRIMARY KEY,
+            game_type TEXT DEFAULT '',
+            status TEXT DEFAULT 'waiting',
+            state TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    for username, player in PLAYERS.items():
+
+        existing = conn.execute(
+            "SELECT username FROM players WHERE username = ?",
+            (username,)
+        ).fetchone()
+
+        if existing is None:
+
+            conn.execute(
+                """
+                INSERT INTO players
+                (
+                    username,
+                    display_name,
+                    role
+                )
+                VALUES (?, ?, ?)
+                """,
+                (
+                    username,
+                    player["display_name"],
+                    player["role"]
+                )
+            )
+
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO rooms
+        (
+            id,
+            game_type,
+            status
+        )
+        VALUES (?, '', 'waiting')
+        """,
+        (MAIN_ROOM,)
+    )
 
     conn.commit()
     conn.close()
 
 
-def add_log(action):
-    try:
-        conn = get_db()
-
-        conn.execute(
-            "INSERT INTO logs (action) VALUES (?)",
-            (action,)
-        )
-
-        conn.commit()
-        conn.close()
-
-    except Exception as e:
-        print("LOG ERROR:", e)
-
-
 init_db()
 
 
-# =========================================================
-# HELPERS
+# ========================================================= # RUNTIME STATE
 # =========================================================
 
-def serialize_movie(row):
-    if row is None:
+connected_users = {}
+
+user_sids = {}
+
+admin_sessions = set()
+
+chat_cache = []
+
+active_games = {}
+
+
+# ========================================================= # HELPERS
+# =========================================================
+
+def now():
+
+    return datetime.utcnow().isoformat()
+
+
+def player_exists(username):
+
+    return username in PLAYERS
+
+
+def get_player(username):
+
+    if not player_exists(username):
         return None
 
-    return {
-        "id": row["id"],
-        "title": row["title"],
-        "description": row["description"],
-        "year": row["year"],
-        "genre": row["genre"],
-        "poster": row["poster"],
-        "video": row["video"],
-        "created_at": row["created_at"]
-    }
-
-
-def get_movie(movie_id):
     conn = get_db()
 
     row = conn.execute(
-        "SELECT * FROM movies WHERE id = ?",
-        (movie_id,)
+        """
+        SELECT
+            username,
+            display_name,
+            avatar_url,
+            role,
+            blocked
+        FROM players
+        WHERE username = ?
+        """,
+        (username,)
     ).fetchone()
 
     conn.close()
 
-    return row
+    if row is None:
+        return None
+
+    return dict(row)
 
 
-def allowed_video(filename):
-    if not filename:
-        return False
+def player_public(username):
 
-    extension = Path(filename).suffix.lower()
+    base = PLAYERS.get(username)
 
-    return extension in ALLOWED_VIDEO_EXTENSIONS
+    if not base:
+        return None
 
+    player = get_player(username)
 
-def create_admin_token():
-    token = uuid.uuid4().hex + uuid.uuid4().hex
-
-    ADMIN_TOKENS.add(token)
-
-    return token
-
-
-def is_admin():
-    token = request.headers.get("X-Admin-Token", "")
-
-    return bool(token and token in ADMIN_TOKENS)
-
-
-def admin_required(function):
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-
-        if not is_admin():
-            return jsonify({
-                "success": False,
-                "error": "دسترسی مدیر لازم است"
-            }), 401
-
-        return function(*args, **kwargs)
-
-    return wrapper
-
-
-# =========================================================
-# ROOMS
-# =========================================================
-
-rooms = {}
-
-sid_info = {}
-
-
-def create_room_if_needed(room_id):
-    if room_id not in rooms:
-
-        rooms[room_id] = {
-            "connections": {},
-            "movie": None,
-            "playing": False,
-            "current_time": 0.0,
-            "updated_at": time.time()
+    if not player:
+        player = {
+            **base,
+            "avatar_url": "",
+            "blocked": 0
         }
 
-    return rooms[room_id]
+    status = connected_users.get(
+        username,
+        "offline"
+    )
+
+    return {
+        "username": username,
+        "display_name":
+            player.get(
+                "display_name",
+                base["display_name"]
+            ),
+        "avatar_url":
+            player.get(
+                "avatar_url",
+                ""
+            ),
+        "role":
+            player.get(
+                "role",
+                base["role"]
+            ),
+        "status": status,
+        "blocked":
+            bool(
+                player.get(
+                    "blocked",
+                    0
+                )
+            )
+    }
 
 
-def get_room_current_time(room):
-    current_time = float(room.get("current_time", 0))
+def all_players():
 
-    if room.get("playing"):
-        updated_at = float(
-            room.get("updated_at", time.time())
+    return [
+        player_public(username)
+        for username in PLAYERS
+    ]
+
+
+def add_activity(
+    icon,
+    title,
+    description=""
+):
+
+    conn = get_db()
+
+    conn.execute(
+        """
+        INSERT INTO activities
+        (
+            icon,
+            title,
+            description
         )
+        VALUES (?, ?, ?)
+        """,
+        (
+            icon,
+            title,
+            description
+        )
+    )
 
-        current_time += time.time() - updated_at
+    conn.commit()
+    conn.close()
 
-    return max(0.0, current_time)
+
+def get_recent_activities():
+
+    conn = get_db()
+
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            icon,
+            title,
+            description,
+            created_at
+        FROM activities
+        ORDER BY id DESC
+        LIMIT 30
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
 
 
-def get_public_members(room):
-    result = {}
+def get_chat_history():
 
-    for name in FIXED_MEMBERS:
-        result[name] = "offline"
+    conn = get_db()
 
-    for info in room["connections"].values():
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            username,
+            display_name,
+            message,
+            is_image,
+            created_at
+        FROM chat_messages
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (MAX_CHAT_MESSAGES,)
+    ).fetchall()
 
-        name = info["name"]
+    conn.close()
 
-        status = info.get("status", "online")
+    result = [
+        {
+            "id": row["id"],
+            "username": row["username"],
+            "display_name": row["display_name"],
+            "message": row["message"],
+            "is_image":
+                bool(row["is_image"]),
+            "created_at": row["created_at"]
+        }
+        for row in rows
+    ]
 
-        if name in result:
-            result[name] = status
+    result.reverse()
 
     return result
 
 
-def emit_members(room_id):
-    room = create_room_if_needed(room_id)
+def save_chat_message(
+    username,
+    message,
+    is_image=False
+):
 
-    socketio.emit(
-        "member_update",
-        {
-            "members": get_public_members(room)
-        },
-        room=room_id
+    player = get_player(username)
+
+    display_name = (
+        player["display_name"]
+        if player
+        else PLAYERS.get(
+            username,
+            {}
+        ).get(
+            "display_name",
+            username
+        )
     )
 
+    conn = get_db()
 
-def get_room_state(room_id):
-    room = create_room_if_needed(room_id)
+    cursor = conn.execute(
+        """
+        INSERT INTO chat_messages
+        (
+            username,
+            display_name,
+            message,
+            is_image
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            username,
+            display_name,
+            message,
+            int(is_image)
+        )
+    )
+
+    conn.commit()
+
+    message_id = cursor.lastrowid
+
+    conn.close()
 
     return {
-        "room_id": room_id,
-        "movie": room["movie"],
-        "playing": room["playing"],
-        "current_time": get_room_current_time(room),
-        "members": get_public_members(room)
+        "id": message_id,
+        "username": username,
+        "display_name": display_name,
+        "message": message,
+        "is_image": bool(is_image),
+        "created_at": now()
     }
 
 
-# =========================================================
-# BASIC ROUTES
+def admin_required(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+
+        token = request.headers.get(
+            "X-Admin-Token",
+            ""
+        )
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "error":
+                    "دسترسی مدیر لازم است."
+            }), 401
+
+        if token not in admin_sessions:
+            return jsonify({
+                "success": False,
+                "error":
+                    "نشست مدیر معتبر نیست."
+            }), 401
+
+        return function(
+            *args,
+            **kwargs
+        )
+
+    return wrapper
+
+
+def json_body():
+
+    try:
+        return request.get_json(
+            silent=True
+        ) or {}
+
+    except Exception:
+        return {}
+
+
+def valid_username(username):
+
+    return (
+        isinstance(username, str)
+        and username in PLAYERS
+    )
+
+
+def room_players():
+
+    return [
+        player_public(username)
+        for username in PLAYERS
+        if username in user_sids
+    ]
+
+
+# ========================================================= # BASIC ROUTES
 # =========================================================
 
 @app.route("/")
@@ -303,959 +590,1169 @@ def home():
 
     return jsonify({
         "success": True,
-        "message": "Movie Night backend is running",
-        "room": MAIN_ROOM_ID
+        "name": "Game Room Backend",
+        "status": "online",
+        "room": MAIN_ROOM
     })
 
 
-@app.route("/api/health")
+@app.route("/health")
 def health():
 
     return jsonify({
         "success": True,
-        "status": "online",
-        "room": MAIN_ROOM_ID
+        "status": "ok",
+        "service": "game-room"
     })
 
 
-# =========================================================
-# MOVIES - PUBLIC
+# ========================================================= # LOGIN
 # =========================================================
 
-@app.route("/api/movies", methods=["GET"])
-def get_movies():
+@app.post("/api/game/login")
+def game_login():
+
+    data = json_body()
+
+    username = data.get(
+        "username",
+        ""
+    ).strip()
+
+    password = data.get(
+        "password",
+        ""
+    )
+
+    if not valid_username(username):
+
+        return jsonify({
+            "success": False,
+            "error":
+                "کاربر معتبر نیست."
+        }), 401
+
+    player = get_player(username)
+
+    if not player:
+
+        return jsonify({
+            "success": False,
+            "error":
+                "کاربر پیدا نشد."
+        }), 404
+
+    if player["blocked"]:
+
+        return jsonify({
+            "success": False,
+            "error":
+                "این کاربر مسدود شده است."
+        }), 403
+
+    if username == "mehdi":
+
+        if password != ADMIN_PASSWORD:
+
+            return jsonify({
+                "success": False,
+                "error":
+                    "رمز مدیریت اشتباه است."
+            }), 401
+
+        token = secrets.token_urlsafe(
+            48
+        )
+
+        admin_sessions.add(token)
+
+        return jsonify({
+            "success": True,
+            "username": username,
+            "role": "admin",
+            "admin_token": token
+        })
+
+    return jsonify({
+        "success": True,
+        "username": username,
+        "role": player["role"]
+    })
+
+
+# ========================================================= # PROFILE
+# =========================================================
+
+@app.get("/api/game/profile/<username>")
+def get_profile(username):
+
+    if not valid_username(username):
+
+        return jsonify({
+            "error":
+                "کاربر پیدا نشد."
+        }), 404
+
+    player = player_public(username)
+
+    return jsonify(player)
+
+
+@app.post("/api/game/profile/<username>")
+def update_profile(username):
+
+    if not valid_username(username):
+
+        return jsonify({
+            "error":
+                "کاربر پیدا نشد."
+        }), 404
+
+    data = json_body()
+
+    display_name = str(
+        data.get(
+            "display_name",
+            ""
+        )
+    ).strip()
+
+    if not display_name:
+
+        return jsonify({
+            "error":
+                "نام نمایشی الزامی است."
+        }), 400
+
+    if len(display_name) > 30:
+
+        return jsonify({
+            "error":
+                "نام نمایشی خیلی طولانی است."
+        }), 400
 
     conn = get_db()
 
-    rows = conn.execute(
-        "SELECT * FROM movies ORDER BY id DESC"
-    ).fetchall()
+    conn.execute(
+        """
+        UPDATE players
+        SET
+            display_name = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE username = ?
+        """,
+        (
+            display_name,
+            username
+        )
+    )
 
+    conn.commit()
     conn.close()
 
-    return jsonify({
-        "success": True,
-        "movies": [
-            serialize_movie(row)
-            for row in rows
-        ]
-    })
+    player = player_public(username)
+
+    socketio.emit(
+        "game_profile_update",
+        player,
+        room=MAIN_ROOM
+    )
+
+    return jsonify(player)
 
 
-@app.route("/api/movies/<int:movie_id>", methods=["GET"])
-def get_single_movie(movie_id):
+@app.post(
+    "/api/game/profile/<username>/avatar"
+)
+def upload_avatar(username):
 
-    row = get_movie(movie_id)
+    if not valid_username(username):
 
-    if not row:
         return jsonify({
-            "success": False,
-            "error": "فیلم پیدا نشد"
+            "error":
+                "کاربر پیدا نشد."
         }), 404
 
+    if "avatar" not in request.files:
+
+        return jsonify({
+            "error":
+                "تصویر ارسال نشده."
+        }), 400
+
+    file = request.files["avatar"]
+
+    if not file.filename:
+
+        return jsonify({
+            "error":
+                "فایل انتخاب نشده."
+        }), 400
+
+    extension = Path(
+        file.filename
+    ).suffix.lower()
+
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+
+        return jsonify({
+            "error":
+                "فرمت تصویر مجاز نیست."
+        }), 400
+
+    filename = (
+        f"profile_{username}_"
+        f"{uuid.uuid4().hex}"
+        f"{extension}"
+    )
+
+    file.save(
+        UPLOAD_DIR / filename
+    )
+
+    url = (
+        f"/uploads/{filename}"
+    )
+
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE players
+        SET
+            avatar_url = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE username = ?
+        """,
+        (
+            url,
+            username
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+    player = player_public(username)
+
+    socketio.emit(
+        "game_profile_update",
+        player,
+        room=MAIN_ROOM
+    )
+
     return jsonify({
         "success": True,
-        "movie": serialize_movie(row)
+        "avatar_url": url
     })
 
 
-# =========================================================
-# MOVIE FILES
+# ========================================================= # UPLOADS
 # =========================================================
 
-@app.route("/uploads/<path:filename>")
+@app.get("/uploads/<path:filename>")
 def uploaded_file(filename):
 
     return send_from_directory(
         UPLOAD_DIR,
-        filename,
-        conditional=True
+        filename
     )
 
 
+# ========================================================= # PLAYERS
 # =========================================================
-# ADMIN LOGIN
-# =========================================================
 
-@app.route("/api/admin/login", methods=["POST"])
-def admin_login():
-
-    data = request.get_json(silent=True) or {}
-
-    password = str(
-        data.get("password", "")
-    )
-
-    if not ADMIN_PASSWORD:
-        return jsonify({
-            "success": False,
-            "error": "ADMIN_PASSWORD در محیط سرور تنظیم نشده است"
-        }), 500
-
-    if password != ADMIN_PASSWORD:
-
-        add_log("Admin login failed")
-
-        return jsonify({
-            "success": False,
-            "error": "رمز عبور اشتباه است"
-        }), 401
-
-    token = create_admin_token()
-
-    add_log("Admin logged in")
+@app.get("/api/game/players")
+def players():
 
     return jsonify({
-        "success": True,
-        "token": token
+        "players": all_players()
     })
 
 
-@app.route("/api/admin/logout", methods=["POST"])
-def admin_logout():
+# ========================================================= # ACTIVITIES
+# =========================================================
 
-    token = request.headers.get(
-        "X-Admin-Token",
+@app.get("/api/game/activity")
+def activities():
+
+    return jsonify({
+        "activities":
+            get_recent_activities()
+    })
+
+
+# ========================================================= # CHAT
+# =========================================================
+
+@app.post("/api/game/chat/upload")
+def chat_upload():
+
+    username = request.form.get(
+        "username",
         ""
+    ).strip()
+
+    if not valid_username(username):
+
+        return jsonify({
+            "error":
+                "کاربر معتبر نیست."
+        }), 401
+
+    if "image" not in request.files:
+
+        return jsonify({
+            "error":
+                "تصویر ارسال نشده."
+        }), 400
+
+    file = request.files["image"]
+
+    if not file.filename:
+
+        return jsonify({
+            "error":
+                "فایل انتخاب نشده."
+        }), 400
+
+    extension = Path(
+        file.filename
+    ).suffix.lower()
+
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+
+        return jsonify({
+            "error":
+                "فرمت تصویر مجاز نیست."
+        }), 400
+
+    filename = (
+        f"chat_{uuid.uuid4().hex}"
+        f"{extension}"
     )
 
-    if token in ADMIN_TOKENS:
-        ADMIN_TOKENS.remove(token)
+    file.save(
+        UPLOAD_DIR / filename
+    )
+
+    return jsonify({
+        "success": True,
+        "url":
+            f"/uploads/{filename}"
+    })
+
+
+# ========================================================= # ROOMS
+# =========================================================
+
+@app.get("/api/game/room")
+def get_room():
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT *
+        FROM rooms
+        WHERE id = ?
+        """,
+        (MAIN_ROOM,)
+    ).fetchone()
+
+    conn.close()
+
+    if not row:
+
+        return jsonify({
+            "id": MAIN_ROOM,
+            "game_type": "",
+            "status": "waiting",
+            "players": room_players()
+        })
+
+    return jsonify({
+        "id": row["id"],
+        "game_type": row["game_type"],
+        "status": row["status"],
+        "players": room_players()
+    })
+
+
+# ========================================================= # ADMIN DASHBOARD
+# =========================================================
+
+@app.get(
+    "/api/game/admin/dashboard"
+)
+@admin_required
+def admin_dashboard():
+
+    online_count = sum(
+        1
+        for status
+        in connected_users.values()
+        if status == "online"
+    )
+
+    weak_count = sum(
+        1
+        for status
+        in connected_users.values()
+        if status == "weak"
+    )
+
+    return jsonify({
+        "success": True,
+        "online_count":
+            online_count,
+        "weak_count":
+            weak_count,
+        "offline_count":
+            MAX_PLAYERS -
+            online_count -
+            weak_count,
+        "active_rooms": 1,
+        "games_running":
+            len(active_games),
+        "players":
+            all_players()
+    })
+
+
+@app.post(
+    "/api/game/admin/block/<username>"
+)
+@admin_required
+def block_player(username):
+
+    if not valid_username(username):
+
+        return jsonify({
+            "error":
+                "کاربر پیدا نشد."
+        }), 404
+
+    if username == "mehdi":
+
+        return jsonify({
+            "error":
+                "مدیر قابل مسدود کردن نیست."
+        }), 400
+
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE players
+        SET blocked = 1
+        WHERE username = ?
+        """,
+        (username,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    socketio.emit(
+        "game_status_update",
+        {
+            "username": username,
+            "status": "offline",
+            "blocked": True
+        },
+        room=MAIN_ROOM
+    )
 
     return jsonify({
         "success": True
     })
 
 
-@app.route("/api/admin/status")
-def admin_status():
+@app.post(
+    "/api/game/admin/unblock/<username>"
+)
+@admin_required
+def unblock_player(username):
+
+    if not valid_username(username):
+
+        return jsonify({
+            "error":
+                "کاربر پیدا نشد."
+        }), 404
+
+    conn = get_db()
+
+    conn.execute(
+        """
+        UPDATE players
+        SET blocked = 0
+        WHERE username = ?
+        """,
+        (username,)
+    )
+
+    conn.commit()
+    conn.close()
 
     return jsonify({
-        "success": True,
-        "logged_in": is_admin()
+        "success": True
     })
 
 
-# =========================================================
-# ADMIN MOVIES
+# ========================================================= # SCENARIOS
 # =========================================================
 
-@app.route("/api/admin/movies", methods=["POST"])
-@admin_required
-def admin_add_movie():
+@app.get("/api/game/scenarios")
+def get_scenarios():
 
-    title = (
-        request.form.get("title")
-        or request.form.get("name")
-        or ""
+    game_type = request.args.get(
+        "game_type",
+        ""
     ).strip()
 
-    video_file = request.files.get("file")
+    conn = get_db()
 
-    if not title:
-        return jsonify({
-            "success": False,
-            "error": "نام فیلم را وارد کنید"
-        }), 400
+    if game_type:
 
-    if not video_file:
-        return jsonify({
-            "success": False,
-            "error": "فایل فیلم انتخاب نشده است"
-        }), 400
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM scenarios
+            WHERE game_type = ?
+            AND enabled = 1
+            ORDER BY id DESC
+            """,
+            (game_type,)
+        ).fetchall()
 
-    if not allowed_video(video_file.filename):
+    else:
 
-        return jsonify({
-            "success": False,
-            "error": "فرمت فایل ویدیو پشتیبانی نمی‌شود"
-        }), 400
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM scenarios
+            WHERE enabled = 1
+            ORDER BY id DESC
+            """
+        ).fetchall()
 
-    original_name = Path(
-        video_file.filename
-    ).name
+    conn.close()
 
-    extension = Path(
-        original_name
-    ).suffix.lower()
+    result = [
+        dict(row)
+        for row in rows
+    ]
 
-    safe_name = (
-        f"{int(time.time())}_"
-        f"{uuid.uuid4().hex}"
-        f"{extension}"
+    return jsonify({
+        "scenarios": result
+    })
+
+
+@app.post("/api/game/admin/scenarios")
+@admin_required
+def add_scenario():
+
+    data = json_body()
+
+    game_type = str(
+        data.get(
+            "game_type",
+            ""
+        )
+    ).strip()
+
+    title = str(
+        data.get(
+            "title",
+            ""
+        )
+    ).strip()
+
+    scenario_data = data.get(
+        "data",
+        {}
     )
 
-    file_path = UPLOAD_DIR / safe_name
-
-    try:
-
-        video_file.save(file_path)
-
-    except Exception as e:
-
-        print("UPLOAD ERROR:", e)
+    if not game_type or not title:
 
         return jsonify({
-            "success": False,
-            "error": "ذخیره فایل انجام نشد"
-        }), 500
+            "error":
+                "نوع بازی و عنوان الزامی است."
+        }), 400
 
-    relative_video = f"/uploads/{safe_name}"
+    import json
 
     conn = get_db()
 
     cursor = conn.execute(
         """
-        INSERT INTO movies
-        (title, description, year, genre, poster, video)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO scenarios
+        (
+            game_type,
+            title,
+            data,
+            enabled
+        )
+        VALUES (?, ?, ?, 1)
         """,
         (
+            game_type,
             title,
-            "",
-            "",
-            "",
-            "",
-            relative_video
+            json.dumps(
+                scenario_data,
+                ensure_ascii=False
+            )
         )
     )
 
-    movie_id = cursor.lastrowid
-
     conn.commit()
 
-    row = conn.execute(
-        "SELECT * FROM movies WHERE id = ?",
-        (movie_id,)
-    ).fetchone()
+    scenario_id = cursor.lastrowid
 
     conn.close()
 
-    add_log(
-        f"Movie added: {title}"
-    )
-
     return jsonify({
         "success": True,
-        "movie": serialize_movie(row)
+        "id": scenario_id
     })
 
 
-@app.route("/api/admin/movies/<int:movie_id>", methods=["DELETE"])
-@admin_required
-def admin_delete_movie(movie_id):
+# ========================================================= # GAME MANAGEMENT
+# =========================================================
 
-    row = get_movie(movie_id)
+VALID_GAMES = {
+    "spy",
+    "mystery",
+    "forbidden"
+}
 
-    if not row:
+
+@app.post("/api/game/start")
+def start_game():
+
+    data = json_body()
+
+    username = data.get(
+        "username",
+        ""
+    )
+
+    game_type = data.get(
+        "game_type",
+        ""
+    )
+
+    if not valid_username(username):
 
         return jsonify({
-            "success": False,
-            "error": "فیلم پیدا نشد"
-        }), 404
+            "error":
+                "کاربر معتبر نیست."
+        }), 401
 
-    video_path = row["video"]
+    if game_type not in VALID_GAMES:
+
+        return jsonify({
+            "error":
+                "بازی معتبر نیست."
+        }), 400
+
+    if game_type == "spy":
+        min_players = 3
+        max_players = 5
+
+    elif game_type == "mystery":
+        min_players = 2
+        max_players = 5
+
+    else:
+        min_players = 4
+        max_players = 4
+
+    current_players = len(
+        room_players()
+    )
+
+    if current_players < min_players:
+
+        return jsonify({
+            "error":
+                f"برای این بازی حداقل {min_players} بازیکن لازم است."
+        }), 400
+
+    if current_players > max_players:
+
+        return jsonify({
+            "error":
+                f"حداکثر {max_players} بازیکن مجاز است."
+        }), 400
+
+    game_id = uuid.uuid4().hex
+
+    active_games[game_id] = {
+        "id": game_id,
+        "game_type": game_type,
+        "host": username,
+        "players": [
+            p["username"]
+            for p in room_players()
+        ],
+        "phase": "waiting",
+        "started_at": time.time()
+    }
 
     conn = get_db()
 
     conn.execute(
-        "DELETE FROM movies WHERE id = ?",
-        (movie_id,)
+        """
+        UPDATE rooms
+        SET
+            game_type = ?,
+            status = 'playing',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (
+            game_type,
+            MAIN_ROOM
+        )
     )
 
     conn.commit()
     conn.close()
 
-    if video_path.startswith("/uploads/"):
-
-        filename = video_path.replace(
-            "/uploads/",
-            "",
-            1
-        )
-
-        file_path = UPLOAD_DIR / filename
-
-        try:
-
-            if file_path.exists():
-                file_path.unlink()
-
-        except Exception as e:
-            print("DELETE FILE ERROR:", e)
-
-    add_log(
-        f"Movie deleted: {row['title']}"
+    add_activity(
+        "🎮",
+        "بازی جدید شروع شد",
+        f"{game_type}"
     )
-
-    return jsonify({
-        "success": True
-    })
-
-
-# =========================================================
-# ADMIN UPLOAD - OPTIONAL
-# =========================================================
-
-@app.route("/api/admin/upload", methods=["POST"])
-@admin_required
-def admin_upload():
-
-    uploaded = request.files.get("file")
-
-    if not uploaded:
-
-        return jsonify({
-            "success": False,
-            "error": "فایلی ارسال نشده است"
-        }), 400
-
-    if not allowed_video(uploaded.filename):
-
-        return jsonify({
-            "success": False,
-            "error": "فرمت فایل ویدیو پشتیبانی نمی‌شود"
-        }), 400
-
-    original_name = Path(
-        uploaded.filename
-    ).name
-
-    extension = Path(
-        original_name
-    ).suffix.lower()
-
-    safe_name = (
-        f"{int(time.time())}_"
-        f"{uuid.uuid4().hex}"
-        f"{extension}"
-    )
-
-    file_path = UPLOAD_DIR / safe_name
-
-    uploaded.save(file_path)
-
-    return jsonify({
-        "success": True,
-        "url": f"/uploads/{safe_name}"
-    })
-
-
-# =========================================================
-# ADMIN STATS
-# =========================================================
-
-@app.route("/api/admin/stats")
-@admin_required
-def admin_stats():
-
-    conn = get_db()
-
-    movie_count = conn.execute(
-        "SELECT COUNT(*) AS count FROM movies"
-    ).fetchone()["count"]
-
-    log_count = conn.execute(
-        "SELECT COUNT(*) AS count FROM logs"
-    ).fetchone()["count"]
-
-    conn.close()
-
-    room = create_room_if_needed(
-        MAIN_ROOM_ID
-    )
-
-    online_count = len(
-        room["connections"]
-    )
-
-    return jsonify({
-        "success": True,
-        "movies": movie_count,
-        "logs": log_count,
-        "online": online_count,
-        "room": MAIN_ROOM_ID
-    })
-
-
-@app.route("/api/admin/logs")
-@admin_required
-def admin_logs():
-
-    conn = get_db()
-
-    rows = conn.execute(
-        """
-        SELECT *
-        FROM logs
-        ORDER BY id DESC
-        LIMIT 200
-        """
-    ).fetchall()
-
-    conn.close()
-
-    logs = []
-
-    for row in rows:
-
-        logs.append({
-            "id": row["id"],
-            "action": row["action"],
-            "created_at": row["created_at"]
-        })
-
-    return jsonify({
-        "success": True,
-        "logs": logs
-    })
-
-
-# =========================================================
-# ADMIN - DIRECT CONNECT MOVIE TO ROOM
-# =========================================================
-
-@app.route(
-    "/api/admin/rooms/<room_id>/movie",
-    methods=["POST"]
-)
-@admin_required
-def admin_connect_movie(room_id):
-
-    data = request.get_json(silent=True) or {}
-
-    movie_id = data.get("movie_id")
-
-    if not movie_id:
-
-        return jsonify({
-            "success": False,
-            "error": "شناسه فیلم ارسال نشده است"
-        }), 400
-
-    try:
-        movie_id = int(movie_id)
-
-    except (TypeError, ValueError):
-
-        return jsonify({
-            "success": False,
-            "error": "شناسه فیلم نامعتبر است"
-        }), 400
-
-    row = get_movie(movie_id)
-
-    if not row:
-
-        return jsonify({
-            "success": False,
-            "error": "فیلم پیدا نشد"
-        }), 404
-
-    movie = serialize_movie(row)
-
-    room = create_room_if_needed(
-        room_id
-    )
-
-    room["movie"] = movie
-    room["playing"] = False
-    room["current_time"] = 0.0
-    room["updated_at"] = time.time()
 
     socketio.emit(
-        "movie_changed",
+        "game_started",
         {
-            "movie": movie,
-            "current_time": 0,
-            "playing": False
+            "game_id": game_id,
+            "game_type": game_type,
+            "players":
+                active_games[
+                    game_id
+                ]["players"]
         },
-        room=room_id
-    )
-
-    add_log(
-        f"Movie connected to room {room_id}: {movie['title']}"
+        room=MAIN_ROOM
     )
 
     return jsonify({
         "success": True,
-        "room": room_id,
-        "movie": movie
+        "game_id": game_id,
+        "game_type": game_type
     })
 
 
-# =========================================================
-# SOCKET.IO - JOIN ROOM
-# =========================================================
-
-@socketio.on("join_room")
-def handle_join_room(data):
-
-    data = data or {}
-
-    room_id = str(
-        data.get("room_id")
-        or MAIN_ROOM_ID
-    ).strip()
-
-    name = str(
-        data.get("name")
-        or ""
-    ).strip()
-
-    if name not in FIXED_MEMBERS:
-
-        emit(
-            "join_error",
-            {
-                "error": "این نام در لیست اعضای اتاق نیست"
-            }
-        )
-
-        return
-
-    room = create_room_if_needed(
-        room_id
-    )
-
-    # جلوگیری از ورود دوباره با یک نام
-    for existing_sid, info in room["connections"].items():
-
-        if info["name"] == name:
-
-            emit(
-                "join_error",
-                {
-                    "error": "این نام در حال حاضر داخل اتاق است"
-                }
-            )
-
-            return
-
-    if len(room["connections"]) >= MAX_ROOM_MEMBERS:
-
-        emit(
-            "join_error",
-            {
-                "error": "ظرفیت اتاق تکمیل است"
-            }
-        )
-
-        return
-
-    join_room(room_id)
-
-    room["connections"][request.sid] = {
-        "name": name,
-        "status": "online",
-        "last_seen": time.time()
-    }
-
-    sid_info[request.sid] = {
-        "room_id": room_id,
-        "name": name
-    }
-
-    emit(
-        "joined",
-        {
-            "success": True,
-            "room_id": room_id,
-            "name": name
-        }
-    )
-
-    emit(
-        "room_state",
-        get_room_state(room_id)
-    )
-
-    emit_members(room_id)
-
-    socketio.emit(
-        "system_message",
-        {
-            "text": f"{name} وارد اتاق شد"
-        },
-        room=room_id
-    )
-
-    add_log(
-        f"{name} joined room {room_id}"
-    )
-
-
-# =========================================================
-# SOCKET.IO - LEAVE ROOM
+# ========================================================= # SOCKET.IO
 # =========================================================
 
-@socketio.on("leave_room")
-def handle_leave_room():
+@socketio.on("connect")
+def socket_connect():
 
-    info = sid_info.get(
+    print(
+        "Socket connected:",
         request.sid
     )
 
-    if not info:
-        return
 
-    room_id = info["room_id"]
-    name = info["name"]
+@socketio.on("disconnect")
+def socket_disconnect():
 
-    room = rooms.get(room_id)
+    sid = request.sid
 
-    if room:
-
-        room["connections"].pop(
-            request.sid,
+    info = user_sids.pop(
+            sid,
             None
         )
 
-        leave_room(room_id)
-
-        emit_members(room_id)
-
-        socketio.emit(
-            "system_message",
-            {
-                "text": f"{name} از اتاق خارج شد"
-            },
-            room=room_id
-        )
-
-    sid_info.pop(
-        request.sid,
-        None
-    )
-
-
-# =========================================================
-# SOCKET.IO - DISCONNECT
-# =========================================================
-
-@socketio.on("disconnect")
-def handle_disconnect():
-
-    info = sid_info.pop(
-        request.sid,
-        None
-    )
-
     if not info:
         return
 
-    room_id = info["room_id"]
-    name = info["name"]
+    username = info["username"]
 
-    room = rooms.get(room_id)
+    if username in connected_users:
 
-    if not room:
-        return
-
-    room["connections"].pop(
-        request.sid,
-        None
-    )
-
-    emit_members(room_id)
-
-    socketio.emit(
-        "system_message",
-        {
-            "text": f"{name} از اتاق خارج شد"
-        },
-        room=room_id
-    )
-
-    add_log(
-        f"{name} disconnected from room {room_id}"
-    )
-
-
-# =========================================================
-# SOCKET.IO - HEARTBEAT / INTERNET STATUS
-# =========================================================
-
-@socketio.on("heartbeat")
-def handle_heartbeat(data):
-
-    info = sid_info.get(
-        request.sid
-    )
-
-    if not info:
-        return {
-            "status": "offline"
-        }
-
-    room_id = info["room_id"]
-
-    room = rooms.get(room_id)
-
-    if not room:
-        return {
-            "status": "offline"
-        }
-
-    member = room["connections"].get(
-        request.sid
-    )
-
-    if not member:
-        return {
-            "status": "offline"
-        }
-
-    latency = 0
-
-    try:
-        latency = float(
-            (data or {}).get(
-                "latency_ms",
-                0
-            )
+        connected_users.pop(
+            username,
+            None
         )
 
-    except (TypeError, ValueError):
-        latency = 0
-
-    if latency >= 700:
-        status = "weak"
-
-    else:
-        status = "online"
-
-    member["status"] = status
-    member["last_seen"] = time.time()
-
-    emit_members(room_id)
-
-    return {
-        "status": status,
-        "latency_ms": latency
-    }
-
-
-# =========================================================
-# SOCKET.IO - PLAY
-# =========================================================
-
-@socketio.on("video_play")
-def handle_video_play(data):
-
-    info = sid_info.get(
-        request.sid
-    )
-
-    if not info:
-        return
-
-    room_id = info["room_id"]
-
-    room = rooms.get(room_id)
-
-    if not room:
-        return
-
-    current_time = float(
-        (data or {}).get(
-            "current_time",
-            0
-        )
-    )
-
-    room["current_time"] = max(
-        0.0,
-        current_time
-    )
-
-    room["playing"] = True
-    room["updated_at"] = time.time()
-
-    emit(
-        "video_play",
-        {
-            "current_time": room["current_time"],
-            "by": info["name"]
-        },
-        room=room_id,
-        include_self=False
-    )
-
-
-# =========================================================
-# SOCKET.IO - PAUSE
-# =========================================================
-
-@socketio.on("video_pause")
-def handle_video_pause(data):
-
-    info = sid_info.get(
-        request.sid
-    )
-
-    if not info:
-        return
-
-    room_id = info["room_id"]
-
-    room = rooms.get(room_id)
-
-    if not room:
-        return
-
-    current_time = float(
-        (data or {}).get(
-            "current_time",
-            0
-        )
-    )
-
-    room["current_time"] = max(
-        0.0,
-        current_time
-    )
-
-    room["playing"] = False
-    room["updated_at"] = time.time()
-
-    emit(
-        "video_pause",
-        {
-            "current_time": room["current_time"],
-            "by": info["name"]
-        },
-        room=room_id,
-        include_self=False
+    leave_room(
+        MAIN_ROOM
     )
 
     socketio.emit(
-        "system_message",
+        "game_status_update",
         {
-            "text": f"{info['name']} ویدیو رو متوقف کرد"
+            "username": username,
+            "status": "offline"
         },
-        room=room_id
+        room=MAIN_ROOM
     )
 
-
-# =========================================================
-# SOCKET.IO - SEEK
-# =========================================================
-
-@socketio.on("video_seek")
-def handle_video_seek(data):
-
-    info = sid_info.get(
-        request.sid
-    )
-
-    if not info:
-        return
-
-    room_id = info["room_id"]
-
-    room = rooms.get(room_id)
-
-    if not room:
-        return
-
-    current_time = float(
-        (data or {}).get(
-            "current_time",
-            0
-        )
-    )
-
-    room["current_time"] = max(
-        0.0,
-        current_time
-    )
-
-    room["updated_at"] = time.time()
-
-    emit(
-        "video_seek",
+    socketio.emit(
+        "game_players_update",
         {
-            "current_time": room["current_time"],
-            "by": info["name"]
+            "players":
+                all_players()
         },
-        room=room_id,
-        include_self=False
+        room=MAIN_ROOM
     )
 
 
-# =========================================================
-# SOCKET.IO - CHAT
-# =========================================================
+@socketio.on("game_join")
+def socket_join(data):
 
-@socketio.on("chat_message")
-def handle_chat_message(data):
+    data = data or {}
 
-    info = sid_info.get(
-        request.sid
-    )
-
-    if not info:
-        return
-
-    room_id = info["room_id"]
-
-    text = str(
-        (data or {}).get(
-            "text",
+    username = str(
+        data.get(
+            "username",
             ""
         )
     ).strip()
 
-    if not text:
+    if not valid_username(username):
+
+        emit(
+            "game_join_error",
+            {
+                "error":
+                    "کاربر معتبر نیست."
+            }
+        )
+
         return
 
-    if len(text) > 1000:
-        text = text[:1000]
+    player = get_player(username)
+
+    if not player:
+
+        emit(
+            "game_join_error",
+            {
+                "error":
+                    "کاربر پیدا نشد."
+            }
+        )
+
+        return
+
+    if player["blocked"]:
+
+        emit(
+            "game_join_error",
+            {
+                "error":
+                    "حساب شما مسدود شده است."
+            }
+        )
+
+        return
+
+    if (
+        username not in user_sids
+        and len(user_sids) >= MAX_PLAYERS
+    ):
+
+        emit(
+            "game_join_error",
+            {
+                "error":
+                    "اتاق پر است."
+            }
+        )
+
+        return
+
+    user_sids[request.sid] = {
+        "username": username
+    }
+
+    connected_users[
+        username
+    ] = "online"
+
+    join_room(
+        MAIN_ROOM
+    )
+
+    player_data = player_public(
+            username
+        )
+
+    emit(
+        "game_joined",
+        {
+            "player":
+                player_data,
+
+            "players":
+                all_players(),
+
+            "messages":
+                get_chat_history()
+        }
+    )
 
     socketio.emit(
-        "new_message",
+        "game_status_update",
         {
-            "name": info["name"],
-            "text": text,
-            "created_at": time.time()
+            "username": username,
+            "status": "online"
         },
-        room=room_id
+        room=MAIN_ROOM
+    )
+
+    socketio.emit(
+        "game_players_update",
+        {
+            "players":
+                all_players()
+        },
+        room=MAIN_ROOM
+    )
+
+    add_activity(
+        "🟢",
+        f"{player_data['display_name']} وارد شد",
+        "به Game Room پیوست."
     )
 
 
-# =========================================================
-# SOCKET.IO - ROOM MOVIE STATE
-# =========================================================
+@socketio.on("game_heartbeat")
+def socket_heartbeat(data):
 
-@socketio.on("request_room_state")
-def handle_request_room_state():
-
-    info = sid_info.get(
-        request.sid
-    )
+    info = user_sids.get(
+            request.sid
+        )
 
     if not info:
         return
 
-    room_id = info["room_id"]
+    username = info["username"]
 
-    emit(
-        "room_state",
-        get_room_state(room_id)
+    connected_users[
+        username
+    ] = "online"
+
+
+@socketio.on("game_profile_update")
+def socket_profile_update(data):
+
+    data = data or {}
+
+    username = data.get(
+        "username"
+    )
+
+    if not valid_username(username):
+        return
+
+    player = player_public(
+        username
+    )
+
+    socketio.emit(
+        "game_profile_update",
+        player,
+        room=MAIN_ROOM
     )
 
 
-# =========================================================
-# ERROR HANDLERS
+@socketio.on("game_chat_history")
+def socket_chat_history():
+
+    emit(
+        "game_chat_history",
+        {
+            "messages":
+                get_chat_history()
+        }
+    )
+
+
+@socketio.on("game_chat")
+def socket_chat(data):
+
+    data = data or {}
+
+    info = user_sids.get(
+            request.sid
+        )
+
+    if not info:
+        return
+
+    username = info["username"]
+
+    message = str(
+        data.get(
+            "message",
+            ""
+        )
+    ).strip()
+
+    if not message:
+        return
+
+    if len(message) > 500:
+
+        emit(
+            "game_chat_error",
+            {
+                "error":
+                    "پیام خیلی طولانی است."
+            }
+        )
+
+        return
+
+    saved = save_chat_message(
+            username,
+            message,
+            False
+        )
+
+    socketio.emit(
+        "game_chat_message",
+        saved,
+        room=MAIN_ROOM
+    )
+
+
+@socketio.on("game_chat_image")
+def socket_chat_image(data):
+
+    data = data or {}
+
+    info = user_sids.get(
+            request.sid
+        )
+
+    if not info:
+        return
+
+    username = info["username"]
+
+    image_url = str(
+        data.get(
+            "image_url",
+            ""
+        )
+    ).strip()
+
+    if not image_url:
+        return
+
+    saved = save_chat_message(
+            username,
+            image_url,
+            True
+        )
+
+    socketio.emit(
+        "game_chat_message",
+        saved,
+        room=MAIN_ROOM
+    )
+
+
+@socketio.on("game_status_update")
+def socket_status_update(data):
+
+    data = data or {}
+
+    info = user_sids.get(
+            request.sid
+        )
+
+    if not info:
+        return
+
+    username = info["username"]
+
+    status = data.get(
+        "status",
+        "online"
+    )
+
+    if status not in {
+        "online",
+        "weak",
+        "offline"
+    }:
+        status = "online"
+
+    connected_users[
+        username
+    ] = status
+
+    socketio.emit(
+        "game_status_update",
+        {
+            "username": username,
+            "status": status
+        },
+        room=MAIN_ROOM
+    )
+
+
+@socketio.on("game_open")
+def socket_game_open(data):
+
+    data = data or {}
+
+    username = data.get(
+        "username"
+    )
+
+    game_type = data.get(
+        "game_type"
+    )
+
+    if game_type not in VALID_GAMES:
+        return
+
+    emit(
+        "game_state_update",
+        {
+            "game_type": game_type,
+            "game_state": {
+                "phase": "waiting",
+                "message":
+                    "بازی در حال آماده‌سازی است."
+            }
+        }
+    )
+
+
+@socketio.on("game_leave")
+def socket_game_leave(data):
+
+    emit(
+        "game_system_message",
+        {
+            "message":
+                "از بازی خارج شدی."
+        }
+    )
+
+
+# ========================================================= # ERROR HANDLERS
 # =========================================================
 
 @app.errorhandler(413)
 def file_too_large(error):
 
     return jsonify({
-        "success": False,
-        "error": "حجم فایل بیش از حد مجاز است"
+        "error":
+            "حجم فایل بیش از حد مجاز است."
     }), 413
 
 
@@ -1264,46 +1761,43 @@ def not_found(error):
 
     return jsonify({
         "success": False,
-        "error": "مسیر موردنظر پیدا نشد"
+        "error":
+            "مسیر موردنظر پیدا نشد."
     }), 404
 
 
 @app.errorhandler(500)
-def server_error(error):
+def internal_error(error):
 
     return jsonify({
         "success": False,
-        "error": "خطای داخلی سرور"
+        "error":
+            "خطای داخلی سرور."
     }), 500
 
 
-# =========================================================
-# RUN
+# ========================================================= # RUN
 # =========================================================
 
 if __name__ == "__main__":
 
-    if not ADMIN_PASSWORD:
-        print("")
-        print("=" * 60)
-        print("هشدار: ADMIN_PASSWORD تنظیم نشده است.")
-        print("قبل از اجرا در Termux این دستور را بزن:")
-        print("export ADMIN_PASSWORD='رمز مدیریت'")
-        print("=" * 60)
-        print("")
-
-    print("")
-    print("=" * 60)
-    print("Movie Night Backend")
-    print(f"Room: {MAIN_ROOM_ID}")
-    print(f"Port: {PORT}")
-    print("=" * 60)
-    print("")
+    print("=" * 50)
+    print("GAME ROOM BACKEND")
+    print("=" * 50)
+    print(
+        f"Room: {MAIN_ROOM}"
+    )
+    print(
+        f"Port: {PORT}"
+    )
+    print(
+        f"Database: {DB_PATH}"
+    )
+    print("=" * 50)
 
     socketio.run(
         app,
         host=HOST,
         port=PORT,
-        debug=False,
         allow_unsafe_werkzeug=True
     )

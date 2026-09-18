@@ -1,2914 +1,947 @@
-cat > index.html <<'HTML'
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#080812">
-<title>Movie Night</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<style>
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-}
+    <title>Game Room 🎮</title>
 
-:root{
-    --bg:#070711;
-    --panel:rgba(20,20,40,.72);
-    --panel2:rgba(32,32,62,.78);
-    --text:#fff;
-    --muted:#a9a9c5;
-    --purple:#9b5cff;
-    --pink:#ff4fa3;
-    --blue:#3c8cff;
-    --green:#22d88a;
-    --yellow:#ffd43b;
-    --red:#ff4d67;
-    --orange:#ff9d42;
-    --border:rgba(255,255,255,.1);
-}
+    <meta name="theme-color" content="#080b14">
+    <meta name="description" content="اتاق بازی خصوصی پنج نفره">
 
-html{
-    scroll-behavior:smooth;
-}
-
-body{
-    min-height:100vh;
-    background:
-        radial-gradient(circle at 15% 10%,rgba(155,92,255,.2),transparent 30%),
-        radial-gradient(circle at 85% 20%,rgba(255,79,163,.14),transparent 28%),
-        radial-gradient(circle at 50% 90%,rgba(60,140,255,.12),transparent 32%),
-        var(--bg);
-    color:var(--text);
-    font-family:Tahoma,Arial,sans-serif;
-}
-
-button,
-input,
-select{
-    font-family:inherit;
-}
-
-button{
-    border:0;
-    cursor:pointer;
-}
-
-.hidden{
-    display:none!important;
-}
-
-/* NAV */
-
-.nav{
-    position:sticky;
-    top:0;
-    z-index:100;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:15px;
-    padding:16px 5%;
-    background:rgba(7,7,17,.82);
-    backdrop-filter:blur(18px);
-    border-bottom:1px solid var(--border);
-}
-
-.logo{
-    font-size:22px;
-    font-weight:900;
-    background:linear-gradient(90deg,#fff,var(--purple),var(--pink));
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
-    white-space:nowrap;
-}
-
-.nav-buttons{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-}
-
-.nav-btn{
-    padding:10px 15px;
-    border-radius:14px;
-    color:#fff;
-    background:var(--panel2);
-    border:1px solid var(--border);
-    transition:.2s;
-}
-
-.nav-btn:hover{
-    transform:translateY(-2px);
-}
-
-.nav-btn.admin{
-    background:linear-gradient(135deg,#ff4fa3,#9b5cff);
-}
-
-/* GENERAL */
-
-.container{
-    width:min(1180px,92%);
-    margin:auto;
-}
-
-.section{
-    padding:45px 0;
-}
-
-.section-title{
-    font-size:25px;
-    margin-bottom:22px;
-}
-
-.glass{
-    background:var(--panel);
-    border:1px solid var(--border);
-    backdrop-filter:blur(18px);
-    box-shadow:0 20px 60px rgba(0,0,0,.2);
-}
-
-/* HERO */
-
-.hero{
-    min-height:500px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:70px 20px;
-}
-
-.hero-inner{
-    max-width:850px;
-}
-
-.badge{
-    display:inline-block;
-    padding:8px 15px;
-    border-radius:999px;
-    background:rgba(155,92,255,.15);
-    border:1px solid rgba(155,92,255,.35);
-    color:#d7c2ff;
-    margin-bottom:20px;
-}
-
-.hero h1{
-    font-size:clamp(42px,8vw,82px);
-    line-height:1.1;
-    font-weight:900;
-    background:linear-gradient(
-        90deg,
-        #fff,
-        #b98aff,
-        #ff65ad,
-        #6eb1ff
-    );
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
-}
-
-.hero p{
-    margin:22px auto 30px;
-    max-width:700px;
-    color:var(--muted);
-    line-height:2;
-    font-size:17px;
-}
-
-.hero-actions{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:12px;
-}
-
-/* BUTTONS */
-
-.btn{
-    padding:13px 20px;
-    border-radius:15px;
-    color:#fff;
-    font-weight:800;
-    transition:.2s;
-    border:1px solid rgba(255,255,255,.1);
-}
-
-.btn:hover{
-    transform:translateY(-3px);
-    box-shadow:0 10px 30px rgba(0,0,0,.25);
-}
-
-.purple{
-    background:linear-gradient(135deg,#7b3ff2,#b05cff);
-}
-
-.blue{
-    background:linear-gradient(135deg,#2677ff,#43b7ff);
-}
-
-.green{
-    background:linear-gradient(135deg,#16b878,#37e99c);
-}
-
-.orange{
-    background:linear-gradient(135deg,#ff7b22,#ffb14a);
-}
-
-.pink{
-    background:linear-gradient(135deg,#ec328e,#ff5eae);
-}
-
-.red{
-    background:linear-gradient(135deg,#e52f4c,#ff657d);
-}
-
-/* MOVIE INVENTORY */
-
-.movie-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-    gap:18px;
-}
-
-.movie-card{
-    overflow:hidden;
-    border-radius:22px;
-    background:var(--panel);
-    border:1px solid var(--border);
-    transition:.25s;
-}
-
-.movie-card:hover{
-    transform:translateY(-5px);
-    border-color:rgba(155,92,255,.45);
-}
-
-.movie-cover{
-    height:145px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:48px;
-    background:
-        radial-gradient(circle at 30% 30%,rgba(155,92,255,.45),transparent 35%),
-        radial-gradient(circle at 80% 70%,rgba(255,79,163,.35),transparent 35%),
-        #111126;
-}
-
-.movie-info{
-    padding:17px;
-}
-
-.movie-info h3{
-    margin-bottom:8px;
-}
-
-.movie-info p{
-    color:var(--muted);
-    font-size:13px;
-    line-height:1.8;
-}
-
-.movie-actions{
-    display:flex;
-    gap:8px;
-    margin-top:15px;
-}
-
-.movie-actions .btn{
-    flex:1;
-    font-size:12px;
-    padding:10px;
-}
-
-/* ROOM */
-
-.room{
-    margin-top:20px;
-    border-radius:25px;
-    padding:20px;
-}
-
-.room-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:18px;
-}
-
-.room-title{
-    font-size:24px;
-    font-weight:900;
-}
-
-.room-code{
-    padding:9px 15px;
-    border-radius:12px;
-    background:rgba(155,92,255,.15);
-    border:1px solid rgba(155,92,255,.3);
-    color:#d9c7ff;
-    font-family:monospace;
-}
-
-.room-grid{
-    display:grid;
-    grid-template-columns:1fr 320px;
-    gap:18px;
-}
-
-.video-panel,
-.chat-panel,
-.members-panel,
-.admin-panel{
-    border-radius:22px;
-    padding:16px;
-}
-
-.video-wrapper{
-    position:relative;
-    overflow:hidden;
-    border-radius:18px;
-    background:#000;
-    aspect-ratio:16/9;
-}
-
-.video-wrapper video{
-    width:100%;
-    height:100%;
-    display:block;
-    object-fit:contain;
-    background:#000;
-}
-
-.video-placeholder{
-    position:absolute;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    gap:10px;
-    background:
-        radial-gradient(circle,rgba(155,92,255,.2),transparent 45%),
-        #08080f;
-    color:var(--muted);
-    pointer-events:none;
-}
-
-.video-placeholder strong{
-    color:#fff;
-    font-size:20px;
-}
-
-.movie-current{
-    margin-top:12px;
-    padding:12px;
-    border-radius:14px;
-    background:rgba(255,255,255,.05);
-    color:#ddd;
-}
-
-.controls{
-    display:flex;
-    flex-wrap:wrap;
-    gap:9px;
-    margin-top:12px;
-}
-
-.control{
-    padding:10px 14px;
-    border-radius:12px;
-    color:#fff;
-    background:var(--panel2);
-    border:1px solid var(--border);
-}
-
-.control.play{
-    background:linear-gradient(135deg,#18b978,#32e69c);
-}
-
-.control.pause{
-    background:linear-gradient(135deg,#e93657,#ff667f);
-}
-
-.control.seek{
-    background:linear-gradient(135deg,#287cff,#51b4ff);
-}
-
-/* SIDEBAR */
-
-.side{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-}
-
-.members-title,
-.chat-title{
-    font-size:17px;
-    font-weight:900;
-    margin-bottom:14px;
-}
-
-.member{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:10px 8px;
-    border-radius:13px;
-    background:rgba(255,255,255,.035);
-    margin-bottom:8px;
-}
-
-.avatar{
-    width:36px;
-    height:36px;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:linear-gradient(135deg,#7c45ff,#ff4fa3);
-    font-weight:900;
-}
-
-.member-name{
-    flex:1;
-}
-
-.status{
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    flex:none;
-}
-
-.status.online{
-    background:var(--green);
-    box-shadow:0 0 10px var(--green);
-    animation:pulse 1.6s infinite;
-}
-
-.status.weak{
-    background:var(--yellow);
-    box-shadow:0 0 10px var(--yellow);
-    animation:pulse 1s infinite;
-}
-
-.status.offline{
-    background:var(--red);
-    box-shadow:0 0 7px rgba(255,77,103,.45);
-}
-
-@keyframes pulse{
-    0%,100%{opacity:1}
-    50%{opacity:.45}
-}
-
-/* CHAT */
-
-.messages{
-    height:300px;
-    overflow-y:auto;
-    padding:5px;
-}
-
-.message{
-    margin-bottom:10px;
-    padding:10px 12px;
-    border-radius:13px;
-    background:rgba(255,255,255,.05);
-}
-
-.message-name{
-    font-size:12px;
-    color:#caaeff;
-    margin-bottom:4px;
-    font-weight:900;
-}
-
-.message-text{
-    line-height:1.7;
-    word-break:break-word;
-}
-
-.system-message{
-    text-align:center;
-    color:#999;
-    font-size:12px;
-    margin:10px 0;
-}
-
-.chat-form{
-    display:flex;
-    gap:7px;
-    margin-top:10px;
-}
-
-.chat-form input{
-    flex:1;
-    min-width:0;
-    padding:12px;
-    border-radius:12px;
-    border:1px solid var(--border);
-    background:rgba(0,0,0,.25);
-    color:#fff;
-    outline:none;
-}
-
-.chat-form button{
-    padding:0 15px;
-    border-radius:12px;
-    background:linear-gradient(135deg,#7b3ff2,#ff4fa3);
-    color:#fff;
-    font-weight:900;
-}
-
-/* ADMIN */
-
-.admin-panel{
-    margin-top:25px;
-    padding:22px;
-}
-
-.admin-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:15px;
-    flex-wrap:wrap;
-    margin-bottom:20px;
-}
-
-.admin-title{
-    font-size:25px;
-    font-weight:900;
-}
-
-.admin-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:15px;
-    margin-bottom:20px;
-}
-
-.stat{
-    padding:18px;
-    border-radius:18px;
-    background:rgba(255,255,255,.045);
-    border:1px solid var(--border);
-}
-
-.stat small{
-    color:var(--muted);
-}
-
-.stat strong{
-    display:block;
-    font-size:28px;
-    margin-top:7px;
-}
-
-.admin-add{
-    display:grid;
-    grid-template-columns:1fr 1.5fr auto;
-    gap:10px;
-    margin-bottom:20px;
-}
-
-.input{
-    width:100%;
-    padding:13px 14px;
-    border-radius:13px;
-    border:1px solid var(--border);
-    background:rgba(0,0,0,.28);
-    color:#fff;
-    outline:none;
-}
-
-.file-input{
-    padding:10px;
-}
-
-.inventory-item{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:13px;
-    margin-bottom:9px;
-    border-radius:15px;
-    background:rgba(255,255,255,.045);
-    border:1px solid var(--border);
-}
-
-.inventory-icon{
-    width:45px;
-    height:45px;
-    border-radius:13px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:linear-gradient(135deg,#7b3ff2,#ff4fa3);
-    font-size:22px;
-}
-
-.inventory-info{
-    flex:1;
-    min-width:0;
-}
-
-.inventory-info strong{
-    display:block;
-    margin-bottom:4px;
-}
-
-.inventory-info small{
-    color:var(--muted);
-}
-
-.inventory-actions{
-    display:flex;
-    gap:7px;
-    flex-wrap:wrap;
-}
-
-.inventory-actions button{
-    padding:9px 11px;
-    border-radius:10px;
-    color:#fff;
-    font-size:12px;
-    font-weight:800;
-}
-
-/* MODAL */
-
-.modal{
-    position:fixed;
-    inset:0;
-    z-index:500;
-    display:none;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-    background:rgba(0,0,0,.72);
-    backdrop-filter:blur(10px);
-}
-
-.modal.active{
-    display:flex;
-}
-
-.modal-box{
-    width:min(500px,100%);
-    padding:25px;
-    border-radius:24px;
-    background:#111124;
-    border:1px solid var(--border);
-    box-shadow:0 30px 100px rgba(0,0,0,.5);
-}
-
-.modal-box h2{
-    margin-bottom:18px;
-}
-
-.modal-box p{
-    color:var(--muted);
-    line-height:1.8;
-    margin-bottom:15px;
-}
-
-.modal-box .input{
-    margin-bottom:10px;
-}
-
-.modal-actions{
-    display:flex;
-    gap:8px;
-    margin-top:10px;
-}
-
-.modal-actions .btn{
-    flex:1;
-}
-
-/* TOAST */
-
-.toast{
-    position:fixed;
-    left:20px;
-    bottom:20px;
-    z-index:999;
-    max-width:360px;
-    padding:13px 17px;
-    border-radius:14px;
-    background:#15152b;
-    border:1px solid var(--border);
-    box-shadow:0 20px 50px rgba(0,0,0,.4);
-    transform:translateY(130px);
-    opacity:0;
-    transition:.3s;
-}
-
-.toast.show{
-    transform:translateY(0);
-    opacity:1;
-}
-
-/* FOOTER */
-
-footer{
-    padding:35px 20px;
-    text-align:center;
-    color:#777791;
-    border-top:1px solid var(--border);
-    margin-top:40px;
-}
-
-/* MOBILE */
-
-@media(max-width:850px){
-
-    .nav{
-        align-items:flex-start;
-        flex-direction:column;
-    }
-
-    .nav-buttons{
-        width:100%;
-    }
-
-    .nav-btn{
-        flex:1;
-    }
-
-    .room-grid{
-        grid-template-columns:1fr;
-    }
-
-    .admin-grid{
-        grid-template-columns:1fr;
-    }
-
-    .admin-add{
-        grid-template-columns:1fr;
-    }
-}
-
-@media(max-width:560px){
-
-    .hero{
-        padding:50px 10px;
-    }
-
-    .hero h1{
-        font-size:42px;
-    }
-
-    .hero-actions{
-        flex-direction:column;
-    }
-
-    .hero-actions .btn{
-        width:100%;
-    }
-
-    .movie-grid{
-        grid-template-columns:1fr;
-    }
-
-    .inventory-item{
-        align-items:flex-start;
-        flex-wrap:wrap;
-    }
-
-    .inventory-info{
-        width:calc(100% - 60px);
-    }
-
-    .inventory-actions{
-        width:100%;
-    }
-
-    .inventory-actions button{
-        flex:1;
-    }
-}
-</style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<header>
-    <nav class="nav">
+    <!-- =========================
+         APP
+    ========================== -->
+    <div id="app">
 
-        <div class="logo">
-            🎬 Movie Night
-        </div>
+        <!-- =========================
+             LOGIN SCREEN
+        ========================== -->
+        <section id="loginScreen" class="screen login-screen">
 
-        <div class="nav-buttons">
+            <div class="login-container">
 
-            <button class="nav-btn" onclick="showHome()">
-                🏠 خانه
-            </button>
+                <div class="brand">
+                    <div class="brand-icon">🎮</div>
 
-            <button class="nav-btn" onclick="openRoomModal()">
-                👥 ورود به اتاق
-            </button>
+                    <h1>Game Room</h1>
 
-            <button class="nav-btn" onclick="showRoom()">
-                🎬 اتاق تماشا
-            </button>
-
-            <button
-                id="adminNavBtn"
-                class="nav-btn admin"
-                onclick="openAdminLogin()"
-            >
-                🔐 ورود
-            </button>
-
-        </div>
-
-    </nav>
-</header>
-
-
-<main>
-
-<!-- HOME -->
-
-<section id="homeSection">
-
-    <div class="hero">
-
-        <div class="hero-inner">
-
-            <div class="badge">
-                ✨ تماشای گروهی
-            </div>
-
-            <h1>
-                Movie Night
-            </h1>
-
-            <p>
-                فیلم رو انتخاب کن، وارد اتاق شو و با دوستات
-                همزمان تماشا کن. پخش فیلم، توقف، جلو و عقب رفتن
-                برای همه اعضای اتاق هماهنگ میشه.
-            </p>
-
-            <div class="hero-actions">
-
-                <button
-                    class="btn purple"
-                    onclick="openRoomModal()"
-                >
-                    👥 ورود به اتاق
-                </button>
-
-                <button
-                    class="btn blue"
-                    onclick="showRoom()"
-                >
-                    🎬 رفتن به اتاق
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- MOVIES -->
-
-    <section class="section">
-
-        <div class="container">
-
-            <div class="section-title">
-                🎬 فیلم‌های موجود
-            </div>
-
-            <div
-                id="movieGrid"
-                class="movie-grid"
-            ></div>
-
-        </div>
-
-    </section>
-
-</section>
-
-
-<!-- ROOM -->
-
-<section
-    id="roomSection"
-    class="section hidden"
->
-
-    <div class="container">
-
-        <div class="room glass">
-
-            <div class="room-header">
-
-                <div class="room-title">
-                    🎬 اتاق تماشا
+                    <p>
+                        اتاق بازی خصوصی
+                        <span>•</span>
+                        فقط ۵ نفر
+                    </p>
                 </div>
 
-                <div class="room-code">
-                    کد اتاق:
-                    <strong id="roomCode">
-                        MOVIE4
-                    </strong>
-                </div>
+                <div class="login-card">
 
-            </div>
+                    <div class="section-title">
+                        <span>👥</span>
+                        بازیکنت رو انتخاب کن
+                    </div>
 
+                    <div id="playerLoginList" class="player-login-list">
 
-            <div class="room-grid">
-
-                <div class="video-panel glass">
-
-                    <div class="video-wrapper">
-
-                        <video
-                            id="video"
-                            controls
-                            playsinline
-                        ></video>
-
-                        <div
-                            id="videoPlaceholder"
-                            class="video-placeholder"
+                        <button
+                            class="player-login"
+                            data-username="mehdi"
+                            type="button"
                         >
+                            <span class="player-avatar">👑</span>
 
-                            <strong>
-                                فیلم هنوز انتخاب نشده
-                            </strong>
-
-                            <span>
-                                منتظر اتصال فیلم توسط مدیر هستیم
+                            <span class="player-info">
+                                <strong>مهدی</strong>
+                                <small>مدیر</small>
                             </span>
 
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="rastin"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>راستین</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="amirali"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>امیرعلی</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="mahna"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>مهنا</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="fatemeh"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>فاطمه</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+                    </div>
+
+                    <div class="private-note">
+                        🔒 این اتاق خصوصی است و فقط اعضای مشخص‌شده می‌توانند وارد شوند.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             MAIN APP
+        ========================== -->
+        <section id="mainScreen" class="screen main-screen hidden">
+
+            <!-- HEADER -->
+            <header class="topbar">
+
+                <div class="topbar-right">
+
+                    <button
+                        id="menuButton"
+                        class="icon-button"
+                        type="button"
+                        aria-label="منو"
+                    >
+                        ☰
+                    </button>
+
+                    <div class="brand-small">
+
+                        <span class="brand-small-icon">
+                            🎮
+                        </span>
+
+                        <div>
+                            <strong>Game Room</strong>
+                            <small>اتاق خصوصی</small>
                         </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="topbar-left">
+
+                    <button
+                        id="chatButton"
+                        class="top-action"
+                        type="button"
+                    >
+                        💬
+                        <span id="chatBadge" class="notification-badge hidden">
+                            0
+                        </span>
+                    </button>
+
+
+                    <button
+                        id="profileButton"
+                        class="profile-mini"
+                        type="button"
+                    >
+                        <span id="headerAvatar">
+                            👤
+                        </span>
+
+                        <span id="headerName">
+                            مهدی
+                        </span>
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <!-- CONTENT -->
+            <main class="main-content">
+
+                <!-- HERO -->
+                <section class="hero-card">
+
+                    <div class="hero-glow"></div>
+
+                    <div class="hero-content">
+
+                        <div class="online-pill">
+                            <span class="pulse-dot"></span>
+                            اتاق آنلاین
+                        </div>
+
+                        <h1>
+                            وقت بازیه
+                            <span>🎮</span>
+                        </h1>
+
+                        <p>
+                            پنج نفر، سه بازی، کلی دردسر 😂
+                        </p>
+
+                    </div>
+
+                    <div class="hero-emoji">
+                        🎲
+                    </div>
+
+                </section>
+
+
+                <!-- MEMBERS -->
+                <section class="section">
+
+                    <div class="section-heading">
+
+                        <div>
+                            <span class="section-icon">👥</span>
+
+                            <div>
+                                <h2>اعضای اتاق</h2>
+                                <small>
+                                    <span id="onlineCount">0</span>
+                                    نفر آنلاین
+                                </small>
+                            </div>
+                        </div>
+
+                        <span class="room-code">
+                            🔒 PRIVATE
+                        </span>
 
                     </div>
 
 
                     <div
-                        id="currentMovie"
-                        class="movie-current"
+                        id="membersGrid"
+                        class="members-grid"
                     >
-                        🎬 فیلمی در حال پخش نیست
-                    </div>
 
-
-                    <div class="controls">
-
-                        <button
-                            class="control play"
-                            onclick="localPlay()"
-                        >
-                            ▶️ پخش
-                        </button>
-
-                        <button
-                            class="control pause"
-                            onclick="localPause()"
-                        >
-                            ⏸ توقف
-                        </button>
-
-                        <button
-                            class="control seek"
-                            onclick="seekVideo(-10)"
-                        >
-                            ⏪ ۱۰ ثانیه
-                        </button>
-
-                        <button
-                            class="control seek"
-                            onclick="seekVideo(10)"
-                        >
-                            ۱۰ ثانیه ⏩
-                        </button>
-
-                        <button
-                            class="control"
-                            onclick="fullscreenVideo()"
-                        >
-                            ⛶ تمام صفحه
-                        </button>
+                        <!-- JS fills players -->
 
                     </div>
 
-                </div>
+                </section>
 
 
-                <div class="side">
+                <!-- GAMES -->
+                <section class="section games-section">
 
-                    <!-- MEMBERS -->
+                    <div class="section-heading">
 
-                    <div class="members-panel glass">
+                        <div>
+                            <span class="section-icon">🎮</span>
 
-                        <div class="members-title">
-                            👥 اعضای اتاق
+                            <div>
+                                <h2>بازی‌ها</h2>
+                                <small>
+                                    یک بازی انتخاب کن
+                                </small>
+                            </div>
                         </div>
 
-                        <div id="membersList"></div>
-
                     </div>
 
 
-                    <!-- CHAT -->
+                    <div class="games-grid">
 
-                    <div class="chat-panel glass">
 
-                        <div class="chat-title">
-                            💬 گفت‌وگوی اتاق
-                        </div>
-
-                        <div
-                            id="messages"
-                            class="messages"
-                        ></div>
-
-                        <form
-                            class="chat-form"
-                            onsubmit="sendChat(event)"
+                        <!-- SPY -->
+                        <article
+                            class="game-card spy-card"
+                            data-game="spy"
                         >
 
-                            <input
-                                id="chatInput"
-                                placeholder="پیامت رو بنویس..."
-                                autocomplete="off"
-                            >
+                            <div class="game-card-top">
 
-                            <button type="submit">
-                                ارسال
-                            </button>
+                                <div class="game-icon">
+                                    🕵️
+                                </div>
 
-                        </form>
+                                <span class="game-status">
+                                    ۳–۵ نفر
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    جاسوس
+                                </h3>
+
+                                <p>
+                                    یکی جاسوسه...
+                                    بقیه باید پیداش کنن!
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    ⏱️ قابل تنظیم
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="spy"
+                                    type="button"
+                                >
+                                    بازی کنیم
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- MYSTERY -->
+                        <article
+                            class="game-card mystery-card"
+                            data-game="mystery"
+                        >
+
+                            <div class="game-card-top">
+
+                                <div class="game-icon">
+                                    🔎
+                                </div>
+
+                                <span class="game-status hardcore">
+                                    HARDCORE
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    اتاق پرونده مرموز
+                                </h3>
+
+                                <p>
+                                    سرنخ‌ها رو کنار هم بذارید
+                                    و راز پرونده رو حل کنید.
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    👥 همکاری تیمی
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="mystery"
+                                    type="button"
+                                >
+                                    ورود به پرونده
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- FORBIDDEN WORD -->
+                        <article
+                            class="game-card forbidden-card"
+                            data-game="forbidden"
+                        >
+
+                            <div class="game-card-top">
+
+                                <div class="game-icon">
+                                    🚫
+                                </div>
+
+                                <span class="game-status">
+                                    ۲ به ۲
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    کلمه ممنوعه
+                                </h3>
+
+                                <p>
+                                    کلمه رو توضیح بده،
+                                    ولی حواست به کلمات ممنوعه باشه!
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    ⚡ سریع و رقابتی
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="forbidden"
+                                    type="button"
+                                >
+                                    شروع بازی
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
 
                     </div>
 
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</section>
+                </section>
 
 
-<!-- ADMIN -->
+                <!-- ACTIVITY -->
+                <section class="section">
 
-<section
-    id="adminPanel"
-    class="section hidden"
->
+                    <div class="section-heading">
 
-    <div class="container">
+                        <div>
+                            <span class="section-icon">⚡</span>
 
-        <div class="admin-panel glass">
+                            <div>
+                                <h2>فعالیت اتاق</h2>
+                                <small>
+                                    آخرین اتفاقات
+                                </small>
+                            </div>
+                        </div>
 
-            <div class="admin-header">
+                    </div>
+
+                    <div
+                        id="activityList"
+                        class="activity-list"
+                    >
+
+                        <div class="empty-activity">
+                            هنوز فعالیتی ثبت نشده.
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </main>
+
+
+            <!-- FLOATING CHAT -->
+            <button
+                id="floatingChatButton"
+                class="floating-chat"
+                type="button"
+                aria-label="باز کردن چت"
+            >
+
+                <span class="floating-chat-icon">
+                    💬
+                </span>
+
+                <span class="floating-chat-text">
+                    چت اتاق
+                </span>
+
+                <span
+                    id="floatingChatBadge"
+                    class="floating-chat-badge hidden"
+                >
+                    0
+                </span>
+
+            </button>
+
+
+            <!-- ADMIN BUTTON -->
+            <button
+                id="adminButton"
+                class="admin-floating hidden"
+                type="button"
+                aria-label="پنل مدیریت"
+            >
+                ⚙️
+            </button>
+
+        </section>
+
+
+        <!-- =========================
+             CHAT PANEL
+        ========================== -->
+        <aside
+            id="chatPanel"
+            class="chat-panel hidden"
+        >
+
+            <div class="chat-header">
 
                 <div>
 
-                    <div class="admin-title">
-                        🛠 پنل مدیریت
-                    </div>
-
-                    <div style="color:var(--muted);margin-top:6px">
-                        مدیریت انبار فیلم‌ها و اتصال مستقیم به اتاق
-                    </div>
-
-                </div>
-
-                <button
-                    class="btn red"
-                    onclick="adminLogout()"
-                >
-                    خروج
-                </button>
-
-            </div>
-
-
-            <div class="admin-grid">
-
-                <div class="stat">
-
-                    <small>
-                        تعداد فیلم‌ها
-                    </small>
-
-                    <strong id="movieCount">
-                        0
-                    </strong>
-
-                </div>
-
-                <div class="stat">
-
-                    <small>
-                        اعضای آنلاین
-                    </small>
-
-                    <strong id="onlineCount">
-                        0
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            <div class="section-title">
-                📦 انبار فیلم‌ها
-            </div>
-
-
-            <div class="admin-add">
-
-                <input
-                    id="movieTitleInput"
-                    class="input"
-                    placeholder="نام فیلم"
-                >
-
-                <input
-                    id="movieFileInput"
-                    class="input file-input"
-                    type="file"
-                    accept="video/*"
-                >
-
-                <button
-                    class="btn green"
-                    onclick="addMovie()"
-                >
-                    ➕ افزودن فیلم
-                </button>
-
-            </div>
-
-
-            <div id="inventoryList"></div>
-
-        </div>
-
-    </div>
-
-</section>
-
-</main>
-
-
-<footer>
-    🎬 Movie Night — تماشای گروهی با دوستان
-</footer>
-
-
-<!-- ROOM MODAL -->
-
-<div
-    id="roomModal"
-    class="modal"
->
-
-    <div class="modal-box">
-
-        <h2>
-            👥 ورود به اتاق
-        </h2>
-
-        <p>
-            اسمت رو انتخاب کن تا وارد اتاق بشی.
-        </p>
-
-        <select
-            id="nameSelect"
-            class="input"
-        >
-
-            <option value="">
-                انتخاب نام
-            </option>
-
-            <option value="مهدی">
-                مهدی
-            </option>
-
-            <option value="راستین">
-                راستین
-            </option>
-
-            <option value="امیرعلی">
-                امیرعلی
-            </option>
-
-            <option value="مهنا">
-                مهنا
-            </option>
-
-            <option value="فاطمه">
-                فاطمه
-            </option>
-
-        </select>
-
-
-        <input
-            id="roomCodeInput"
-            class="input"
-            value="MOVIE4"
-            placeholder="کد اتاق"
-        >
-
-
-        <div class="modal-actions">
-
-            <button
-                class="btn purple"
-                onclick="joinRoom()"
-            >
-                🚪 ورود
-            </button>
-
-            <button
-                class="btn red"
-                onclick="closeRoomModal()"
-            >
-                بستن
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- ADMIN LOGIN -->
-
-<div
-    id="adminLoginModal"
-    class="modal"
->
-
-    <div class="modal-box">
-
-        <h2>
-            🔐 ورود مدیر
-        </h2>
-
-        <p>
-            برای ورود به پنل مدیریت رمز عبور را وارد کنید.
-        </p>
-
-        <input
-            id="adminPassword"
-            class="input"
-            type="password"
-            placeholder="رمز مدیریت"
-            onkeydown="if(event.key==='Enter') adminLogin()"
-        >
-
-        <div class="modal-actions">
-
-            <button
-                class="btn purple"
-                onclick="adminLogin()"
-            >
-                🔓 ورود
-            </button>
-
-            <button
-                class="btn red"
-                onclick="closeAdminLogin()"
-            >
-                بستن
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<div
-    id="toast"
-    class="toast"
-></div>
-
-
-<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-
-<script>
-
-/* =========================================================
-   CONFIG
-========================================================= */
-
-const API_BASE = "https://movie-night-backend-production-9b85.up.railway.app";
-
-const ROOM_ID = "MOVIE4";
-
-const MEMBERS = [
-    "مهدی",
-    "راستین",
-    "امیرعلی",
-    "مهنا",
-    "فاطمه"
-];
-
-let socket = null;
-
-let currentUser = null;
-
-let currentRoom = ROOM_ID;
-
-let adminToken =
-    sessionStorage.getItem("adminToken") || "";
-
-let applyingRemote = false;
-
-let selectedMovie = null;
-
-
-/* =========================================================
-   ELEMENTS
-========================================================= */
-
-const video =
-    document.getElementById("video");
-
-const movieGrid =
-    document.getElementById("movieGrid");
-
-const inventoryList =
-    document.getElementById("inventoryList");
-
-const messages =
-    document.getElementById("messages");
-
-const currentMovie =
-    document.getElementById("currentMovie");
-
-const videoPlaceholder =
-    document.getElementById("videoPlaceholder");
-
-
-/* =========================================================
-   TOAST
-========================================================= */
-
-let toastTimer = null;
-
-function toast(text){
-
-    const box =
-        document.getElementById("toast");
-
-    box.textContent = text;
-
-    box.classList.add("show");
-
-    clearTimeout(toastTimer);
-
-    toastTimer = setTimeout(() => {
-
-        box.classList.remove("show");
-
-    }, 3000);
-}
-
-
-/* =========================================================
-   NAVIGATION
-========================================================= */
-
-function showHome(){
-
-    document
-        .getElementById("homeSection")
-        .classList.remove("hidden");
-
-    document
-        .getElementById("roomSection")
-        .classList.add("hidden");
-
-    document
-        .getElementById("adminPanel")
-        .classList.add("hidden");
-
-    window.scrollTo({
-        top:0,
-        behavior:"smooth"
-    });
-}
-
-
-function showRoom(){
-
-    document
-        .getElementById("homeSection")
-        .classList.add("hidden");
-
-    document
-        .getElementById("roomSection")
-        .classList.remove("hidden");
-
-    document
-        .getElementById("adminPanel")
-        .classList.add("hidden");
-
-    window.scrollTo({
-        top:0,
-        behavior:"smooth"
-    });
-}
-
-
-function showAdmin(){
-
-    document
-        .getElementById("homeSection")
-        .classList.add("hidden");
-
-    document
-        .getElementById("roomSection")
-        .classList.add("hidden");
-
-    document
-        .getElementById("adminPanel")
-        .classList.remove("hidden");
-
-    loadInventory();
-    loadAdminStats();
-
-    window.scrollTo({
-        top:0,
-        behavior:"smooth"
-    });
-}
-
-
-/* =========================================================
-   ROOM MODAL
-========================================================= */
-
-function openRoomModal(){
-
-    document
-        .getElementById("roomModal")
-        .classList.add("active");
-}
-
-
-function closeRoomModal(){
-
-    document
-        .getElementById("roomModal")
-        .classList.remove("active");
-}
-
-
-function joinRoom(){
-
-    const name =
-        document
-            .getElementById("nameSelect")
-            .value;
-
-    const room =
-        document
-            .getElementById("roomCodeInput")
-            .value
-            .trim() || ROOM_ID;
-
-    if(!name){
-
-        toast("اول اسمت رو انتخاب کن ❤️");
-        return;
-    }
-
-    currentUser = name;
-    currentRoom = room;
-
-    closeRoomModal();
-    showRoom();
-
-    connectSocket();
-}
-
-
-/* =========================================================
-   SOCKET
-========================================================= */
-
-function connectSocket(){
-
-    if(socket){
-
-        try{
-            socket.disconnect();
-        }catch(e){}
-
-    }
-
-    socket = io(API_BASE, {
-        path: "/socket.io",
-        transports: ["polling", "websocket"],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        timeout: 20000
-    });
-
-    socket.on("connect_error", (err) => {
-        console.error("SOCKET CONNECT ERROR:", err);
-        toast("❌ خطا در اتصال به اتاق");
-    });
-
-
-    socket.on("connect", () => {
-
-        toast("🟢 به سرور وصل شدی");
-
-        socket.emit(
-            "join_room",
-            {
-                room_id:currentRoom,
-                name:currentUser
-            }
-        );
-
-        startHeartbeat();
-
-    });
-
-
-    socket.on("joined", data => {
-
-        addSystemMessage(
-            `${data.name} وارد اتاق شد`
-        );
-
-    });
-
-
-    socket.on("join_error", data => {
-
-        toast(
-            data.error || "ورود به اتاق انجام نشد"
-        );
-
-    });
-
-
-    socket.on("room_state", state => {
-
-        applyRoomState(state);
-
-    });
-
-
-    socket.on("member_update", data => {
-
-        renderMembers(
-            data.members || {}
-        );
-
-    });
-
-
-    socket.on("system_message", data => {
-
-        addSystemMessage(
-            data.text
-        );
-
-    });
-
-
-    socket.on("new_message", data => {
-
-        addChatMessage(
-            data.name,
-            data.text
-        );
-
-    });
-
-
-    socket.on("movie_changed", data => {
-
-        loadMovieRemote(
-            data.movie,
-            data.current_time || 0
-        );
-
-    });
-
-
-    socket.on("video_play", data => {
-
-        applyRemotePlay(
-            data.current_time || 0
-        );
-
-    });
-
-
-    socket.on("video_pause", data => {
-
-        applyRemotePause(
-            data.current_time || 0
-        );
-
-    });
-
-
-    socket.on("video_seek", data => {
-
-        applyRemoteSeek(
-            data.current_time || 0
-        );
-
-    });
-
-
-    socket.on("disconnect", () => {
-
-        renderMembers({
-            "مهدی":"offline",
-            "راستین":"offline",
-            "امیرعلی":"offline",
-            "مهنا":"offline",
-            "فاطمه":"offline"
-        });
-
-        toast("🔴 ارتباط با سرور قطع شد");
-
-    });
-
-}
-
-
-/* =========================================================
-   HEARTBEAT
-========================================================= */
-
-let heartbeatTimer = null;
-
-function startHeartbeat(){
-
-    clearInterval(heartbeatTimer);
-
-    heartbeatTimer = setInterval(() => {
-
-        if(!socket || !socket.connected)
-            return;
-
-        const started =
-            performance.now();
-
-        socket.emit(
-            "heartbeat",
-            {
-                latency_ms:0
-            },
-            response => {
-
-                const latency =
-                    performance.now() - started;
-
-                socket.emit(
-                    "heartbeat",
-                    {
-                        latency_ms:latency
-                    }
-                );
-
-            }
-        );
-
-    },5000);
-}
-
-
-/* =========================================================
-   MEMBERS
-========================================================= */
-
-function renderMembers(statuses){
-
-    const container =
-        document.getElementById("membersList");
-
-    container.innerHTML = "";
-
-    MEMBERS.forEach(name => {
-
-        const status =
-            statuses[name] || "offline";
-
-        const item =
-            document.createElement("div");
-
-        item.className = "member";
-
-        let icon = "👤";
-
-        if(name === "مهدی") icon = "🧑";
-        if(name === "راستین") icon = "👨";
-        if(name === "امیرعلی") icon = "🧑‍💻";
-        if(name === "مهنا") icon = "👩";
-        if(name === "فاطمه") icon = "👩‍💻";
-
-        item.innerHTML = `
-            <div class="avatar">${icon}</div>
-            <div class="member-name">${escapeHtml(name)}</div>
-            <div
-                class="status ${status}"
-                title="${statusText(status)}"
-            ></div>
-        `;
-
-        container.appendChild(item);
-
-    });
-
-    const online =
-        Object.values(statuses)
-            .filter(x =>
-                x === "online" ||
-                x === "weak"
-            ).length;
-
-    document
-        .getElementById("onlineCount")
-        .textContent = online;
-}
-
-
-function statusText(status){
-
-    if(status === "online")
-        return "آنلاین";
-
-    if(status === "weak")
-        return "اینترنت ضعیف";
-
-    return "آفلاین";
-}
-
-
-/* =========================================================
-   ROOM STATE
-========================================================= */
-
-function applyRoomState(state){
-
-    renderMembers(
-        state.members || {}
-    );
-
-    if(state.movie){
-
-        loadMovieRemote(
-            state.movie,
-            state.current_time || 0
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   MOVIE URL
-========================================================= */
-
-function mediaUrl(path){
-
-    if(!path)
-        return "";
-
-    if(path.startsWith("http://") ||
-       path.startsWith("https://"))
-        return path;
-
-    return API_BASE + path;
-}
-
-
-/* =========================================================
-   MOVIE LOADING
-========================================================= */
-
-function loadMovieRemote(movie, startTime){
-
-    if(!movie)
-        return;
-
-    selectedMovie = movie;
-
-    const source =
-        mediaUrl(movie.video);
-
-    applyingRemote = true;
-
-    video.pause();
-
-    video.src = source;
-
-    video.load();
-
-    currentMovie.innerHTML =
-        `🎬 <strong>${escapeHtml(movie.title)}</strong>`;
-
-    videoPlaceholder.style.display =
-        "none";
-
-    video.onloadedmetadata = () => {
-
-        try{
-
-            video.currentTime =
-                Number(startTime || 0);
-
-        }catch(e){}
-
-        setTimeout(() => {
-
-            applyingRemote = false;
-
-        },300);
-
-    };
-
-    toast(
-        `🎬 فیلم «${movie.title}» به اتاق وصل شد`
-    );
-}
-
-
-/* =========================================================
-   VIDEO LOCAL
-========================================================= */
-
-function localPlay(){
-
-    if(!video.src){
-
-        toast("هنوز فیلمی به اتاق وصل نشده");
-        return;
-    }
-
-    video.play();
-
-    if(
-        socket &&
-        socket.connected &&
-        !applyingRemote
-    ){
-
-        socket.emit(
-            "video_play",
-            {
-                current_time:video.currentTime
-            }
-        );
-
-    }
-
-}
-
-
-function localPause(){
-
-    if(!video.src)
-        return;
-
-    video.pause();
-
-    if(
-        socket &&
-        socket.connected &&
-        !applyingRemote
-    ){
-
-        socket.emit(
-            "video_pause",
-            {
-                current_time:video.currentTime
-            }
-        );
-
-    }
-
-}
-
-
-function seekVideo(seconds){
-
-    if(!video.src)
-        return;
-
-    video.currentTime =
-        Math.max(
-            0,
-            video.currentTime + seconds
-        );
-
-    if(
-        socket &&
-        socket.connected
-    ){
-
-        socket.emit(
-            "video_seek",
-            {
-                current_time:video.currentTime
-            }
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   VIDEO EVENTS
-========================================================= */
-
-video.addEventListener(
-    "play",
-    () => {
-
-        if(applyingRemote)
-            return;
-
-        if(
-            socket &&
-            socket.connected
-        ){
-
-            socket.emit(
-                "video_play",
-                {
-                    current_time:
-                        video.currentTime
-                }
-            );
-
-        }
-
-    }
-);
-
-
-video.addEventListener(
-    "pause",
-    () => {
-
-        if(applyingRemote)
-            return;
-
-        if(
-            socket &&
-            socket.connected
-        ){
-
-            socket.emit(
-                "video_pause",
-                {
-                    current_time:
-                        video.currentTime
-                }
-            );
-
-        }
-
-    }
-);
-
-
-video.addEventListener(
-    "seeked",
-    () => {
-
-        if(applyingRemote)
-            return;
-
-        if(
-            socket &&
-            socket.connected
-        ){
-
-            socket.emit(
-                "video_seek",
-                {
-                    current_time:
-                        video.currentTime
-                }
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   REMOTE VIDEO
-========================================================= */
-
-function applyRemotePlay(time){
-
-    applyingRemote = true;
-
-    try{
-
-        video.currentTime =
-            Number(time || 0);
-
-    }catch(e){}
-
-    const promise =
-        video.play();
-
-    if(promise){
-
-        promise.catch(() => {
-
-            toast(
-                "برای پخش، یک بار دکمه ▶️ رو بزن"
-            );
-
-        });
-
-    }
-
-    setTimeout(() => {
-
-        applyingRemote = false;
-
-    },300);
-
-}
-
-
-function applyRemotePause(time){
-
-    applyingRemote = true;
-
-    video.pause();
-
-    try{
-
-        video.currentTime =
-            Number(time || 0);
-
-    }catch(e){}
-
-    setTimeout(() => {
-
-        applyingRemote = false;
-
-    },250);
-
-}
-
-
-function applyRemoteSeek(time){
-
-    applyingRemote = true;
-
-    try{
-
-        video.currentTime =
-            Number(time || 0);
-
-    }catch(e){}
-
-    setTimeout(() => {
-
-        applyingRemote = false;
-
-    },250);
-
-}
-
-
-/* =========================================================
-   FULLSCREEN
-========================================================= */
-
-function fullscreenVideo(){
-
-    const wrapper =
-        document.querySelector(".video-wrapper");
-
-    if(wrapper.requestFullscreen){
-
-        wrapper.requestFullscreen();
-
-    }else if(video.webkitEnterFullscreen){
-
-        video.webkitEnterFullscreen();
-
-    }
-
-}
-
-
-/* =========================================================
-   CHAT
-========================================================= */
-
-function sendChat(event){
-
-    event.preventDefault();
-
-    const input =
-        document.getElementById("chatInput");
-
-    const text =
-        input.value.trim();
-
-    if(!text)
-        return;
-
-    if(
-        !socket ||
-        !socket.connected
-    ){
-
-        toast("اول وارد اتاق شو");
-        return;
-    }
-
-    socket.emit(
-        "chat_message",
-        {
-            text:text
-        }
-    );
-
-    input.value = "";
-
-}
-
-
-function addChatMessage(name,text){
-
-    const item =
-        document.createElement("div");
-
-    item.className =
-        "message";
-
-    item.innerHTML = `
-        <div class="message-name">
-            ${escapeHtml(name)}
-        </div>
-
-        <div class="message-text">
-            ${escapeHtml(text)}
-        </div>
-    `;
-
-    messages.appendChild(item);
-
-    messages.scrollTop =
-        messages.scrollHeight;
-
-}
-
-
-function addSystemMessage(text){
-
-    const item =
-        document.createElement("div");
-
-    item.className =
-        "system-message";
-
-    item.textContent =
-        text;
-
-    messages.appendChild(item);
-
-    messages.scrollTop =
-        messages.scrollHeight;
-
-}
-
-
-/* =========================================================
-   ADMIN LOGIN
-========================================================= */
-
-function openAdminLogin(){
-
-    if(adminToken){
-
-        showAdmin();
-        return;
-
-    }
-
-    document
-        .getElementById("adminLoginModal")
-        .classList.add("active");
-
-    setTimeout(() => {
-
-        document
-            .getElementById("adminPassword")
-            .focus();
-
-    },100);
-
-}
-
-
-function closeAdminLogin(){
-
-    document
-        .getElementById("adminLoginModal")
-        .classList.remove("active");
-
-}
-
-
-async function adminLogin(){
-
-    const password =
-        document
-            .getElementById("adminPassword")
-            .value;
-
-    if(!password){
-
-        toast("رمز مدیریت رو وارد کن");
-        return;
-    }
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE + "/api/admin/login",
-                {
-                    method:"POST",
-                    headers:{
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:JSON.stringify({
-                        password:password
-                    })
-                }
-            );
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            toast(
-                data.error ||
-                "ورود انجام نشد"
-            );
-
-            return;
-        }
-
-        adminToken =
-            data.token;
-
-        sessionStorage.setItem(
-            "adminToken",
-            adminToken
-        );
-
-        document
-            .getElementById("adminPassword")
-            .value = "";
-
-        closeAdminLogin();
-
-        toast("🔓 ورود مدیر موفق بود");
-
-        showAdmin();
-
-    }catch(error){
-
-        console.error(error);
-
-        toast(
-            "ارتباط با سرور برقرار نشد"
-        );
-
-    }
-
-}
-
-
-async function adminLogout(){
-
-    try{
-
-        await fetch(
-            API_BASE + "/api/admin/logout",
-            {
-                method:"POST",
-                headers:{
-                    "X-Admin-Token":
-                        adminToken
-                }
-            }
-        );
-
-    }catch(e){}
-
-    adminToken = "";
-
-    sessionStorage.removeItem(
-        "adminToken"
-    );
-
-    toast("از پنل مدیریت خارج شدی");
-
-    showHome();
-
-}
-
-
-/* =========================================================
-   ADMIN API
-========================================================= */
-
-function adminHeaders(){
-
-    return {
-        "X-Admin-Token":
-            adminToken
-    };
-
-}
-
-
-async function addMovie(){
-
-    const title =
-        document
-            .getElementById("movieTitleInput")
-            .value
-            .trim();
-
-    const file =
-        document
-            .getElementById("movieFileInput")
-            .files[0];
-
-    if(!adminToken){
-        toast("ابتدا وارد پنل مدیریت شو");
-        return;
-    }
-
-    if(!title){
-        toast("نام فیلم رو وارد کن");
-        return;
-    }
-
-    if(!file){
-        toast("فایل فیلم رو انتخاب کن");
-        return;
-    }
-
-    const form = new FormData();
-
-    form.append("title", title);
-    form.append("file", file);
-
-    const xhr = new XMLHttpRequest();
-
-    xhr.open(
-        "POST",
-        API_BASE + "/api/admin/movies",
-        true
-    );
-
-    const headers = adminHeaders();
-
-    Object.keys(headers).forEach(key => {
-        xhr.setRequestHeader(key, headers[key]);
-    });
-
-    xhr.upload.addEventListener("progress", function(event){
-
-        if(event.lengthComputable){
-
-            const percent =
-                Math.round(
-                    (event.loaded / event.total) * 100
-                );
-
-            toast("⏳ در حال آپلود فیلم... " + percent + "%");
-
-        }
-
-    });
-
-    xhr.onload = function(){
-
-        let data = {};
-
-        try{
-            data = JSON.parse(xhr.responseText || "{}");
-        }catch(error){
-            console.error("UPLOAD RESPONSE:", xhr.status, xhr.responseText);
-        }
-
-        if(xhr.status < 200 || xhr.status >= 300){
-
-            toast(
-                data.error ||
-                "آپلود انجام نشد"
-            );
-
-            return;
-        }
-
-        document
-            .getElementById("movieTitleInput")
-            .value = "";
-
-        document
-            .getElementById("movieFileInput")
-            .value = "";
-
-        toast("✅ فیلم با موفقیت آپلود شد");
-
-        loadInventory();
-        loadMovies();
-
-    };
-
-    xhr.onerror = function(){
-
-        console.error(
-            "Upload network error"
-        );
-
-        toast("❌ خطا در ارتباط با سرور");
-
-    };
-
-    xhr.onabort = function(){
-
-        toast("❌ آپلود لغو شد");
-
-    };
-
-    toast("⏳ در حال آپلود فیلم... 0%");
-
-    xhr.send(form);
-}
-
-async function loadInventory(){
-
-    if(!inventoryList)
-        return;
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE +
-                "/api/movies"
-            );
-
-        const data = await response.json();
-
-        if(!data.success)
-            return;
-
-        inventoryList.innerHTML = "";
-
-        if(!data.movies.length){
-
-            inventoryList.innerHTML = `
-                <div class="stat">
-                    هنوز فیلمی به انبار اضافه نشده.
-                </div>
-            `;
-
-            return;
-        }
-
-        data.movies.forEach(movie => {
-
-            const item =
-                document.createElement("div");
-
-            item.className =
-                "inventory-item";
-
-            item.innerHTML = `
-
-                <div class="inventory-icon">
-                    🎬
-                </div>
-
-                <div class="inventory-info">
-
                     <strong>
-                        ${escapeHtml(movie.title)}
+                        💬 چت اتاق
                     </strong>
 
                     <small>
-                        فیلم آماده اتصال به اتاق
+                        پیام‌های زنده
                     </small>
 
                 </div>
 
-                <div class="inventory-actions">
+                <button
+                    id="closeChat"
+                    class="icon-button"
+                    type="button"
+                >
+                    ✕
+                </button>
 
-                    <button
-                        style="background:linear-gradient(135deg,#2677ff,#43b7ff)"
-                        onclick="connectMovie(${movie.id})"
-                    >
-                        🔗 اتصال مستقیم
-                    </button>
-
-                    <button
-                        style="background:linear-gradient(135deg,#e52f4c,#ff657d)"
-                        onclick="deleteMovie(${movie.id})"
-                    >
-                        🗑 حذف
-                    </button>
-
-                </div>
-            `;
-
-            inventoryList.appendChild(item);
-
-        });
-
-        document
-            .getElementById("movieCount")
-            .textContent =
-                data.movies.length;
-
-    }catch(error){
-
-        console.error(error);
-
-        inventoryList.innerHTML = `
-            <div class="stat">
-                اتصال به سرور برقرار نشد.
             </div>
-        `;
-
-    }
-
-}
 
 
-/* =========================================================
-   DIRECT CONNECT
-========================================================= */
+            <div
+                id="chatMessages"
+                class="chat-messages"
+            >
 
-async function connectMovie(movieId){
-
-    if(!adminToken){
-
-        toast("ابتدا وارد پنل مدیریت شو");
-        return;
-    }
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE +
-                `/api/admin/rooms/${ROOM_ID}/movie`,
-                {
-                    method:"POST",
-                    headers:{
-                        ...adminHeaders(),
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:JSON.stringify({
-                        movie_id:movieId
-                    })
-                }
-            );
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            toast(
-                data.error ||
-                "اتصال فیلم انجام نشد"
-            );
-
-            return;
-        }
-
-        toast(
-            `🎬 ${data.movie.title} به اتاق وصل شد`
-        );
-
-        showRoom();
-
-    }catch(error){
-
-        console.error(error);
-
-        toast(
-            "ارتباط با سرور برقرار نشد"
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   DELETE MOVIE
-========================================================= */
-
-async function deleteMovie(movieId){
-
-    if(!adminToken){
-
-        toast("ابتدا وارد پنل مدیریت شو");
-        return;
-    }
-
-    if(
-        !confirm(
-            "این فیلم از انبار حذف شود؟"
-        )
-    ){
-
-        return;
-    }
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE +
-                `/api/admin/movies/${movieId}`,
-                {
-                    method:"DELETE",
-                    headers:
-                        adminHeaders()
-                }
-            );
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            toast(
-                data.error ||
-                "حذف انجام نشد"
-            );
-
-            return;
-        }
-
-        toast("🗑 فیلم حذف شد");
-
-        loadInventory();
-        loadMovies();
-
-    }catch(error){
-
-        console.error(error);
-
-        toast(
-            "خطا در حذف فیلم"
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   PUBLIC MOVIES
-========================================================= */
-
-async function loadMovies(){
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE +
-                "/api/movies"
-            );
-
-        const text = await response.text();
-        console.log("UPLOAD RESPONSE:", response.status, text);
-        const data = JSON.parse(text);
-            await response.json();
-
-        if(!data.success)
-            return;
-
-        movieGrid.innerHTML = "";
-
-        if(!data.movies.length){
-
-            movieGrid.innerHTML = `
-                <div class="stat">
-                    🎬 هنوز فیلمی توسط مدیر اضافه نشده.
-                </div>
-            `;
-
-            return;
-        }
-
-        data.movies.forEach(movie => {
-
-            const card =
-                document.createElement("div");
-
-            card.className =
-                "movie-card";
-
-            card.innerHTML = `
-
-                <div class="movie-cover">
-                    🎬
+                <div class="system-message">
+                    به Game Room خوش اومدی 🎮
                 </div>
 
-                <div class="movie-info">
+            </div>
 
-                    <h3>
-                        ${escapeHtml(movie.title)}
-                    </h3>
 
-                    <p>
-                        این فیلم در انبار موجود است.
-                        مدیر می‌تواند آن را مستقیم
-                        به اتاق متصل کند.
-                    </p>
+            <div class="chat-input-area">
 
-                    <div class="movie-actions">
+                <button
+                    id="chatImageButton"
+                    class="chat-tool"
+                    type="button"
+                    aria-label="ارسال تصویر"
+                >
+                    🖼️
+                </button>
 
-                        <button
-                            class="btn blue"
-                            onclick="openRoomModal()"
-                        >
-                            👥 ورود به اتاق
-                        </button>
+                <input
+                    id="chatInput"
+                    type="text"
+                    maxlength="500"
+                    autocomplete="off"
+                    placeholder="پیامت رو بنویس..."
+                >
+
+                <button
+                    id="sendChatButton"
+                    class="send-button"
+                    type="button"
+                    aria-label="ارسال"
+                >
+                    ➤
+                </button>
+
+                <input
+                    id="chatImageInput"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                >
+
+            </div>
+
+        </aside>
+
+
+        <!-- =========================
+             PROFILE MODAL
+        ========================== -->
+        <div
+            id="profileModal"
+            class="modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card profile-card">
+
+                <button
+                    id="closeProfile"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div class="profile-avatar-large">
+
+                    <img
+                        id="profileAvatarImage"
+                        class="hidden"
+                        alt="تصویر پروفایل"
+                    >
+
+                    <span
+                        id="profileAvatarFallback"
+                    >
+                        👤
+                    </span>
+
+                    <button
+                        id="changeAvatarButton"
+                        type="button"
+                        class="avatar-edit"
+                    >
+                        📷
+                    </button>
+
+                    <input
+                        id="profileAvatarInput"
+                        type="file"
+                        accept="image/*"
+                        hidden
+                    >
+
+                </div>
+
+
+                <h2>
+                    پروفایل من
+                </h2>
+
+                <p class="profile-username">
+                    حساب:
+                    <strong id="profileUsername">
+                        -
+                    </strong>
+                </p>
+
+
+                <label class="field-label">
+                    نام نمایشی
+                </label>
+
+                <input
+                    id="displayNameInput"
+                    class="text-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="نام نمایشی"
+                >
+
+
+                <button
+                    id="saveProfileButton"
+                    class="primary-button"
+                    type="button"
+                >
+                    ذخیره تغییرات
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             PASSWORD MODAL
+        ========================== -->
+        <div
+            id="passwordModal"
+            class="modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card">
+
+                <div class="modal-icon">
+                    👑
+                </div>
+
+                <h2>
+                    ورود مدیر
+                </h2>
+
+                <p>
+                    رمز مدیریت مهدی رو وارد کن.
+                </p>
+
+                <input
+                    id="passwordInput"
+                    class="text-input"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="رمز مدیریت"
+                >
+
+                <div
+                    id="passwordError"
+                    class="form-error hidden"
+                >
+                    رمز اشتباهه.
+                </div>
+
+                <div class="modal-actions">
+
+                    <button
+                        id="cancelPassword"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        لغو
+                    </button>
+
+                    <button
+                        id="confirmPassword"
+                        class="primary-button"
+                        type="button"
+                    >
+                        ورود
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             GAME MODAL / ROOM
+        ========================== -->
+        <div
+            id="gameModal"
+            class="modal game-modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card game-room-card">
+
+                <button
+                    id="closeGame"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div
+                    id="gameContent"
+                    class="game-content"
+                >
+
+                    <div class="game-loading">
+                        🎮
+                        <p>
+                            در حال آماده‌سازی بازی...
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             ADMIN PANEL
+        ========================== -->
+        <div
+            id="adminModal"
+            class="modal admin-modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card admin-card">
+
+                <button
+                    id="closeAdmin"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div class="admin-header">
+
+                    <div>
+                        <span class="admin-icon">
+                            👑
+                        </span>
+
+                        <div>
+                            <h2>
+                                پنل مدیریت
+                            </h2>
+
+                            <small>
+                                Game Room
+                            </small>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="admin-tabs">
+
+                    <button
+                        class="admin-tab active"
+                        data-admin-tab="dashboard"
+                        type="button"
+                    >
+                        📊 داشبورد
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="players"
+                        type="button"
+                    >
+                        👥 بازیکنان
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="rooms"
+                        type="button"
+                    >
+                        🚪 اتاق‌ها
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="scenarios"
+                        type="button"
+                    >
+                        🧩 سناریوها
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="settings"
+                        type="button"
+                    >
+                        ⚙️ تنظیمات
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="adminContent"
+                    class="admin-content"
+                >
+
+                    <div class="admin-dashboard">
+
+                        <div class="admin-stat">
+                            <span>🟢</span>
+                            <strong id="adminOnlineCount">0</strong>
+                            <small>آنلاین</small>
+                        </div>
+
+                        <div class="admin-stat">
+                            <span>🚪</span>
+                            <strong id="adminRoomCount">0</strong>
+                            <small>اتاق فعال</small>
+                        </div>
+
+                        <div class="admin-stat">
+                            <span>🎮</span>
+                            <strong id="adminGameCount">0</strong>
+                            <small>بازی در حال اجرا</small>
+                        </div>
 
                     </div>
 
                 </div>
-            `;
 
-            movieGrid.appendChild(card);
-
-        });
-
-    }catch(error){
-
-        console.error(error);
-
-        movieGrid.innerHTML = `
-            <div class="stat">
-                برای نمایش فیلم‌ها، اتصال به سرور لازم است.
             </div>
-        `;
 
-    }
-
-}
+        </div>
 
 
-/* =========================================================
-   ADMIN STATS
-========================================================= */
+        <!-- TOAST -->
+        <div
+            id="toastContainer"
+            class="toast-container"
+            aria-live="polite"
+        ></div>
 
-async function loadAdminStats(){
-
-    if(!adminToken)
-        return;
-
-    try{
-
-        const response =
-            await fetch(
-                API_BASE +
-                "/api/admin/stats",
-                {
-                    headers:
-                        adminHeaders()
-                }
-            );
-
-        const text = await response.text();
-        console.log("UPLOAD RESPONSE:", response.status, text);
-        const data = JSON.parse(text);
-            await response.json();
-
-        if(!response.ok)
-            return;
-
-        document
-            .getElementById("movieCount")
-            .textContent =
-                data.movies;
-
-        document
-            .getElementById("onlineCount")
-            .textContent =
-                data.online;
-
-    }catch(error){
-
-        console.error(error);
-
-    }
-
-}
+    </div>
 
 
-/* =========================================================
-   ESCAPE
-========================================================= */
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
 
-function escapeHtml(value){
-
-    return String(value ?? "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-
-}
-
-
-/* =========================================================
-   START
-========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        renderMembers({
-            "مهدی":"offline",
-            "راستین":"offline",
-            "امیرعلی":"offline",
-            "مهنا":"offline",
-            "فاطمه":"offline"
-        });
-
-        loadMovies();
-
-        if(adminToken){
-
-            showAdmin();
-
-        }
-
-    }
-);
-
-</script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="app.js"></script>
 
 </body>
 </html>
-HTML
