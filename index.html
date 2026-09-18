@@ -2685,10 +2685,7 @@ async function deleteMovie(movieId){
                 }
             );
 
-        const text = await response.text();
-        console.log("UPLOAD RESPONSE:", response.status, text);
-        const data = JSON.parse(text);
-            await response.json();
+        const data = await response.json();
 
         if(!response.ok){
 
