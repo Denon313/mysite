@@ -2281,7 +2281,9 @@ async function adminLogin(){
                 }
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!response.ok){
@@ -2383,56 +2385,65 @@ async function addMovie(){
             .files[0];
 
     if(!adminToken){
-
         toast("ابتدا وارد پنل مدیریت شو");
         return;
     }
 
     if(!title){
-
         toast("نام فیلم رو وارد کن");
         return;
     }
 
     if(!file){
-
         toast("فایل فیلم رو انتخاب کن");
         return;
     }
 
-    const form =
-        new FormData();
+    const form = new FormData();
 
-    form.append(
-        "title",
-        title
+    form.append("title", title);
+    form.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.open(
+        "POST",
+        API_BASE + "/api/admin/movies",
+        true
     );
 
-    form.append(
-        "file",
-        file
-    );
+    const headers = adminHeaders();
 
-    toast("⏳ در حال آپلود فیلم...");
+    Object.keys(headers).forEach(key => {
+        xhr.setRequestHeader(key, headers[key]);
+    });
 
-    try{
+    xhr.upload.addEventListener("progress", function(event){
 
-        const response =
-            await fetch(
-                API_BASE +
-                "/api/admin/movies",
-                {
-                    method:"POST",
-                    headers:
-                        adminHeaders(),
-                    body:form
-                }
-            );
+        if(event.lengthComputable){
 
-        const data =
-            await response.json();
+            const percent =
+                Math.round(
+                    (event.loaded / event.total) * 100
+                );
 
-        if(!response.ok){
+            toast("⏳ در حال آپلود فیلم... " + percent + "%");
+
+        }
+
+    });
+
+    xhr.onload = function(){
+
+        let data = {};
+
+        try{
+            data = JSON.parse(xhr.responseText || "{}");
+        }catch(error){
+            console.error("UPLOAD RESPONSE:", xhr.status, xhr.responseText);
+        }
+
+        if(xhr.status < 200 || xhr.status >= 300){
 
             toast(
                 data.error ||
@@ -2450,23 +2461,33 @@ async function addMovie(){
             .getElementById("movieFileInput")
             .value = "";
 
-        toast("✅ فیلم به انبار اضافه شد");
+        toast("✅ فیلم با موفقیت آپلود شد");
 
         loadInventory();
         loadMovies();
 
-    }catch(error){
+    };
 
-        console.error(error);
+    xhr.onerror = function(){
 
-        toast(
-            "خطا در ارتباط با سرور"
+        console.error(
+            "Upload network error"
         );
 
-    }
+        toast("❌ خطا در ارتباط با سرور");
 
+    };
+
+    xhr.onabort = function(){
+
+        toast("❌ آپلود لغو شد");
+
+    };
+
+    toast("⏳ در حال آپلود فیلم... 0%");
+
+    xhr.send(form);
 }
-
 
 async function loadInventory(){
 
@@ -2481,7 +2502,9 @@ async function loadInventory(){
                 "/api/movies"
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!data.success)
@@ -2600,7 +2623,9 @@ async function connectMovie(movieId){
                 }
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!response.ok){
@@ -2666,7 +2691,9 @@ async function deleteMovie(movieId){
                 }
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!response.ok){
@@ -2711,7 +2738,9 @@ async function loadMovies(){
                 "/api/movies"
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!data.success)
@@ -2810,7 +2839,9 @@ async function loadAdminStats(){
                 }
             );
 
-        const data =
+        const text = await response.text();
+        console.log("UPLOAD RESPONSE:", response.status, text);
+        const data = JSON.parse(text);
             await response.json();
 
         if(!response.ok)
