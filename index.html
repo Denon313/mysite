@@ -1,15 +1,1117 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سایت من</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090914">
+<title>Movie Night</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #070711;
+    --panel: rgba(22, 22, 42, 0.72);
+    --panel2: rgba(35, 35, 65, 0.72);
+    --text: #ffffff;
+    --muted: #a9a9c0;
+    --purple: #9b5cff;
+    --pink: #ff4fa3;
+    --blue: #38bdf8;
+    --green: #32e6a1;
+    --orange: #ff9d42;
+    --red: #ff4d6d;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 15% 15%, rgba(155,92,255,.22), transparent 30%),
+        radial-gradient(circle at 85% 25%, rgba(255,79,163,.18), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(56,189,248,.13), transparent 35%),
+        var(--bg);
+    color: var(--text);
+    font-family: Tahoma, Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+button {
+    border: 0;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* HEADER */
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(18px);
+    background: rgba(7,7,17,.72);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.nav {
+    max-width: 1200px;
+    margin: auto;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.logo {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(90deg,var(--pink),var(--purple),var(--blue));
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.nav-btn {
+    padding: 10px 14px;
+    border-radius: 14px;
+    color: white;
+    background: linear-gradient(135deg,#8b5cf6,#ec4899);
+    box-shadow: 0 8px 25px rgba(139,92,246,.18);
+    transition: .25s;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+/* HERO */
+
+.hero {
+    max-width: 1200px;
+    margin: auto;
+    padding: 70px 20px 35px;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: clamp(38px,8vw,72px);
+    line-height: 1.05;
+    margin-bottom: 18px;
+    background: linear-gradient(90deg,#fff,var(--pink),var(--purple),var(--blue));
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.hero p {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 650px;
+    margin: auto;
+    line-height: 2;
+}
+
+.hero-actions {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* BUTTONS */
+
+.gradient-btn {
+    color: white;
+    padding: 14px 22px;
+    border-radius: 17px;
+    font-weight: bold;
+    transition: .25s;
+}
+
+.gradient-btn:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.12);
+}
+
+.purple {
+    background: linear-gradient(135deg,#7c3aed,#c026d3);
+    box-shadow: 0 12px 30px rgba(124,58,237,.3);
+}
+
+.blue {
+    background: linear-gradient(135deg,#0284c7,#06b6d4);
+}
+
+.green {
+    background: linear-gradient(135deg,#059669,#22c55e);
+}
+
+.orange {
+    background: linear-gradient(135deg,#f97316,#f59e0b);
+}
+
+.pink {
+    background: linear-gradient(135deg,#ec4899,#f43f5e);
+}
+
+/* SEARCH */
+
+.search-box {
+    max-width: 800px;
+    margin: 25px auto;
+    display: flex;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(15px);
+}
+
+.search-box input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    color: white;
+    background: transparent;
+    padding: 13px;
+    font-size: 16px;
+}
+
+.search-box input::placeholder {
+    color: #85859e;
+}
+
+/* CARDS */
+
+.section {
+    max-width: 1200px;
+    margin: auto;
+    padding: 25px 20px;
+}
+
+.section-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(190px,1fr));
+    gap: 18px;
+}
+
+.movie-card {
+    overflow: hidden;
+    border-radius: 22px;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(15px);
+    transition: .3s;
+}
+
+.movie-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(155,92,255,.45);
+}
+
+.poster {
+    height: 270px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    background:
+        linear-gradient(145deg,rgba(155,92,255,.8),rgba(236,72,153,.5)),
+        #151525;
+}
+
+.movie-info {
+    padding: 14px;
+}
+
+.movie-info h3 {
+    font-size: 17px;
+    margin-bottom: 7px;
+}
+
+.movie-info p {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.card-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 13px;
+    color: white;
+    background: linear-gradient(135deg,#7c3aed,#ec4899);
+}
+
+/* ROOM */
+
+.room {
+    max-width: 1250px;
+    margin: auto;
+    padding: 25px 15px 60px;
+}
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.room-code {
+    padding: 10px 15px;
+    border-radius: 14px;
+    background: linear-gradient(135deg,#312e81,#831843);
+    font-size: 14px;
+}
+
+.room-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 340px;
+    gap: 18px;
+}
+
+.video-panel,
+.chat-panel,
+.members-panel {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+/* VIDEO */
+
+.video-wrapper {
+    aspect-ratio: 16 / 9;
+    background: #000;
+    position: relative;
+}
+
+.video-wrapper video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
+.video-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    color: #aaa;
+    pointer-events: none;
+}
+
+.video-placeholder strong {
+    font-size: 22px;
+    color: white;
+}
+
+/* CONTROLS */
+
+.controls {
+    padding: 14px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.control {
+    padding: 10px 14px;
+    border-radius: 13px;
+    color: white;
+    background: #292942;
+}
+
+.control.play {
+    background: linear-gradient(135deg,#059669,#10b981);
+}
+
+.control.pause {
+    background: linear-gradient(135deg,#e11d48,#ec4899);
+}
+
+.control.seek {
+    background: linear-gradient(135deg,#2563eb,#06b6d4);
+}
+
+.movie-name {
+    padding: 16px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* MEMBERS */
+
+.members-panel {
+    padding: 16px;
+    margin-bottom: 18px;
+}
+
+.members-title {
+    margin-bottom: 12px;
+}
+
+.member {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.04);
+    margin-bottom: 7px;
+}
+
+.avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg,var(--purple),var(--pink));
+}
+
+.status {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: auto;
+}
+
+/* CHAT */
+
+.chat-panel {
+    height: 520px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-title {
+    padding: 16px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+}
+
+.message {
+    margin-bottom: 12px;
+}
+
+.message-name {
+    font-size: 12px;
+    color: var(--blue);
+    margin-bottom: 4px;
+}
+
+.message-text {
+    display: inline-block;
+    max-width: 90%;
+    padding: 9px 12px;
+    border-radius: 14px 14px 14px 4px;
+    background: rgba(255,255,255,.07);
+    line-height: 1.6;
+}
+
+.system-message {
+    text-align: center;
+    color: #9d9db7;
+    font-size: 12px;
+    margin: 10px 0;
+}
+
+.chat-form {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.chat-form input {
+    min-width: 0;
+    flex: 1;
+    padding: 11px;
+    border: 0;
+    outline: 0;
+    color: white;
+    border-radius: 13px;
+    background: rgba(255,255,255,.06);
+}
+
+.chat-form button {
+    padding: 11px 15px;
+    color: white;
+    border-radius: 13px;
+    background: linear-gradient(135deg,#ec4899,#8b5cf6);
+}
+
+/* MODAL */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,.72);
+    backdrop-filter: blur(10px);
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-box {
+    width: min(500px,100%);
+    padding: 25px;
+    border-radius: 25px;
+    background: #151525;
+    border: 1px solid rgba(255,255,255,.1);
+    box-shadow: 0 30px 100px rgba(0,0,0,.6);
+}
+
+.modal-box h2 {
+    margin-bottom: 20px;
+}
+
+.modal-box input {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255,255,255,.1);
+    outline: none;
+    color: white;
+    border-radius: 14px;
+    background: rgba(255,255,255,.05);
+}
+
+/* TOAST */
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 25px;
+    transform: translateX(-50%) translateY(100px);
+    z-index: 200;
+    padding: 13px 18px;
+    border-radius: 15px;
+    background: linear-gradient(135deg,#7c3aed,#ec4899);
+    color: white;
+    opacity: 0;
+    transition: .3s;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* FOOTER */
+
+footer {
+    text-align: center;
+    color: #777791;
+    padding: 40px 20px;
+}
+
+/* MOBILE */
+
+@media(max-width:850px) {
+    .room-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-panel {
+        height: 430px;
+    }
+}
+
+@media(max-width:600px) {
+    .nav {
+        padding: 12px;
+    }
+
+    .nav-buttons {
+        display: none;
+    }
+
+    .hero {
+        padding-top: 45px;
+    }
+
+    .cards {
+        grid-template-columns: repeat(2,1fr);
+        gap: 10px;
+    }
+
+    .poster {
+        height: 210px;
+    }
+
+    .movie-info {
+        padding: 10px;
+    }
+
+    .movie-info h3 {
+        font-size: 14px;
+    }
+
+    .room {
+        padding: 15px 10px 40px;
+    }
+
+    .controls {
+        padding: 10px;
+    }
+
+    .control {
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+}
+</style>
 </head>
+
 <body>
 
-    <h1>سلام 👋</h1>
-    <p>این اولین سایت منه!</p>
+<header>
+    <nav class="nav">
+        <div class="logo">🎬 Movie Night</div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="showHome()">🏠 خانه</button>
+            <button class="nav-btn" onclick="openCreateRoom()">👥 ساخت اتاق</button>
+            <button class="nav-btn" onclick="showRoom()">🎬 اتاق تماشا</button>
+        </div>
+    </nav>
+</header>
+
+<main id="home">
+
+    <section class="hero">
+        <h1>Movie Night</h1>
+        <p>
+            چهار نفر، یک فیلم، یک اتاق و یک تماشای همزمان.
+            فیلم رو انتخاب کنید، وارد اتاق بشید و با هم تماشا کنید.
+        </p>
+
+        <div class="hero-actions">
+            <button class="gradient-btn purple" onclick="openCreateRoom()">
+                👥 ساخت اتاق تماشا
+            </button>
+
+            <button class="gradient-btn blue" onclick="openJoinRoom()">
+                🔗 ورود به اتاق
+            </button>
+        </div>
+
+        <div class="search-box">
+            <input id="searchInput" placeholder="🔍 اسم فیلم یا سریال رو جستجو کن..." onkeydown="searchMovie(event)">
+            <button class="gradient-btn pink" onclick="searchMovie()">جستجو</button>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">🔥 پیشنهادهای امشب</h2>
+
+        <div class="cards">
+
+            <article class="movie-card">
+                <div class="poster">🎬</div>
+                <div class="movie-info">
+                    <h3>Movie Night</h3>
+                    <p>2026 • فیلم</p>
+                    <button class="card-btn" onclick="selectMovie('Movie Night')">
+                        ▶️ تماشا
+                    </button>
+                </div>
+            </article>
+
+            <article class="movie-card">
+                <div class="poster">👻</div>
+                <div class="movie-info">
+                    <h3>Horror Night</h3>
+                    <p>2026 • ترسناک</p>
+                    <button class="card-btn" onclick="selectMovie('Horror Night')">
+                        😱 انتخاب
+                    </button>
+                </div>
+            </article>
+
+            <article class="movie-card">
+                <div class="poster">❤️</div>
+                <div class="movie-info">
+                    <h3>Love Story</h3>
+                    <p>2026 • عاشقانه</p>
+                    <button class="card-btn" onclick="selectMovie('Love Story')">
+                        ❤️ انتخاب
+                    </button>
+                </div>
+            </article>
+
+            <article class="movie-card">
+                <div class="poster">😂</div>
+                <div class="movie-info">
+                    <h3>Comedy Night</h3>
+                    <p>2026 • کمدی</p>
+                    <button class="card-btn" onclick="selectMovie('Comedy Night')">
+                        😂 انتخاب
+                    </button>
+                </div>
+            </article>
+
+        </div>
+    </section>
+
+</main>
+
+<section id="room" class="room hidden">
+
+    <div class="room-header">
+        <div>
+            <h2>🎬 اتاق تماشا</h2>
+            <p style="color:#999;margin-top:5px">
+                با هم تماشا کنید ❤️
+            </p>
+        </div>
+
+        <div class="room-code">
+            🔗 کد اتاق:
+            <strong id="roomCode">ABC123</strong>
+        </div>
+    </div>
+
+    <div class="room-grid">
+
+        <div>
+
+            <div class="video-panel">
+
+                <div class="video-wrapper">
+
+                    <video id="video" controls></video>
+
+                    <div id="videoPlaceholder" class="video-placeholder">
+                        <div style="font-size:60px">🎬</div>
+                        <strong>فیلم هنوز انتخاب نشده</strong>
+                        <span>یک فیلم انتخاب کنید تا تماشا را شروع کنیم</span>
+                    </div>
+
+                </div>
+
+                <div class="movie-name" id="currentMovie">
+                    فیلم انتخاب نشده
+                </div>
+
+                <div class="controls">
+
+                    <button class="control play" onclick="playVideo()">
+                        ▶️ پخش
+                    </button>
+
+                    <button class="control pause" onclick="pauseVideo()">
+                        ⏸️ توقف
+                    </button>
+
+                    <button class="control seek" onclick="seekVideo(-10)">
+                        ⏪ ۱۰ ثانیه
+                    </button>
+
+                    <button class="control seek" onclick="seekVideo(10)">
+                        ۱۰ ثانیه ⏩
+                    </button>
+
+                    <button class="control" onclick="toggleFullscreen()">
+                        ⛶ تمام صفحه
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="members-panel" style="margin-top:18px">
+
+                <div class="members-title">
+                    👥 اعضای اتاق
+                </div>
+
+                <div class="member">
+                    <div class="avatar">م</div>
+                    <div>مهدی</div>
+                    <div class="status"></div>
+                </div>
+
+                <div class="member">
+                    <div class="avatar">م</div>
+                    <div>مهنا</div>
+                    <div class="status"></div>
+                </div>
+
+                <div class="member">
+                    <div class="avatar">👤</div>
+                    <div>نفر سوم</div>
+                    <div class="status"></div>
+                </div>
+
+                <div class="member">
+                    <div class="avatar">👤</div>
+                    <div>نفر چهارم</div>
+                    <div class="status"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <aside class="chat-panel">
+
+            <div class="chat-title">
+                💬 چت گروهی
+            </div>
+
+            <div id="messages" class="messages">
+
+                <div class="system-message">
+                    مهدی وارد اتاق شد
+                </div>
+
+                <div class="system-message">
+                    مهنا وارد اتاق شد
+                </div>
+
+                <div class="message">
+                    <div class="message-name">مهنا</div>
+                    <div class="message-text">
+                        فیلم رو انتخاب کنیم؟ 😍
+                    </div>
+                </div>
+
+            </div>
+
+            <form class="chat-form" onsubmit="sendMessage(event)">
+                <input id="chatInput" placeholder="پیامت رو بنویس...">
+                <button>➤</button>
+            </form>
+
+        </aside>
+
+    </div>
+
+</section>
+
+<div id="roomModal" class="modal">
+
+    <div class="modal-box">
+
+        <h2 id="modalTitle">👥 ساخت اتاق</h2>
+
+        <input id="nameInput" placeholder="اسمت رو وارد کن">
+
+        <input id="codeInput" placeholder="کد اتاق، اگر داری">
+
+        <div style="display:flex;gap:10px">
+
+            <button class="gradient-btn purple" onclick="createRoom()">
+                ساخت اتاق
+            </button>
+
+            <button class="gradient-btn orange" onclick="closeModal()">
+                بستن
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<footer>
+    🎬 Movie Night • ساخته شده برای شب‌های فیلم ❤️
+</footer>
+
+<script>
+
+const video = document.getElementById("video");
+const room = document.getElementById("room");
+const home = document.getElementById("home");
+const messages = document.getElementById("messages");
+
+let currentUser = "مهدی";
+let selectedMovie = null;
+
+/* TOAST */
+
+function toast(text) {
+    const el = document.getElementById("toast");
+
+    el.textContent = text;
+    el.classList.add("show");
+
+    setTimeout(() => {
+        el.classList.remove("show");
+    }, 2500);
+}
+
+/* ROOM */
+
+function openCreateRoom() {
+    document.getElementById("modalTitle").textContent = "👥 ساخت اتاق";
+    document.getElementById("codeInput").style.display = "none";
+    document.getElementById("roomModal").classList.add("active");
+}
+
+function openJoinRoom() {
+    document.getElementById("modalTitle").textContent = "🔗 ورود به اتاق";
+    document.getElementById("codeInput").style.display = "block";
+    document.getElementById("roomModal").classList.add("active");
+}
+
+function closeModal() {
+    document.getElementById("roomModal").classList.remove("active");
+}
+
+function createRoom() {
+
+    const name = document.getElementById("nameInput").value.trim();
+
+    if (name) {
+        currentUser = name;
+    }
+
+    const code =
+        Math.random().toString(36).substring(2,8).toUpperCase();
+
+    document.getElementById("roomCode").textContent = code;
+
+    closeModal();
+    showRoom();
+
+    addSystemMessage(currentUser + " اتاق را ایجاد کرد");
+}
+
+function showRoom() {
+    home.classList.add("hidden");
+    room.classList.remove("hidden");
+
+    window.scrollTo({
+        top:0,
+        behavior:"smooth"
+    });
+}
+
+function showHome() {
+    room.classList.add("hidden");
+    home.classList.remove("hidden");
+
+    window.scrollTo({
+        top:0,
+        behavior:"smooth"
+    });
+}
+
+/* MOVIE */
+
+function selectMovie(name) {
+
+    selectedMovie = name;
+
+    document.getElementById("currentMovie").textContent =
+        "🎬 " + name;
+
+    document.getElementById("videoPlaceholder").innerHTML = `
+        <div style="font-size:60px">🎬</div>
+        <strong>${name}</strong>
+        <span>آماده پخش</span>
+    `;
+
+    showRoom();
+
+    addSystemMessage(currentUser + " فیلم «" + name + "» را انتخاب کرد");
+
+    toast("فیلم انتخاب شد 🎬");
+}
+
+/* SEARCH */
+
+function searchMovie(event) {
+
+    if (event && event.key !== "Enter") {
+        return;
+    }
+
+    const value =
+        document.getElementById("searchInput").value.trim();
+
+    if (!value) {
+        toast("اسم فیلم رو وارد کن 🔍");
+        return;
+    }
+
+    toast("جستجوی «" + value + "» آماده اتصال به منبع فیلم است 🔎");
+}
+
+/* VIDEO */
+
+function playVideo() {
+
+    video.play();
+
+    addSystemMessage(
+        currentUser + " ویدیو را پخش کرد ▶️"
+    );
+}
+
+function pauseVideo() {
+
+    video.pause();
+
+    addSystemMessage(
+        currentUser + " ویدیو را متوقف کرد ⏸️"
+    );
+}
+
+function seekVideo(seconds) {
+
+    video.currentTime =
+        Math.max(0, video.currentTime + seconds);
+
+    addSystemMessage(
+        currentUser +
+        " ویدیو را " +
+        (seconds > 0 ? "جلو" : "عقب") +
+        " برد"
+    );
+}
+
+function toggleFullscreen() {
+
+    const wrapper =
+        document.querySelector(".video-wrapper");
+
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        wrapper.requestFullscreen();
+    }
+}
+
+/* CHAT */
+
+function sendMessage(event) {
+
+    event.preventDefault();
+
+    const input =
+        document.getElementById("chatInput");
+
+    const text = input.value.trim();
+
+    if (!text) {
+        return;
+    }
+
+    const message = document.createElement("div");
+
+    message.className = "message";
+
+    message.innerHTML = `
+        <div class="message-name">
+            ${escapeHtml(currentUser)}
+        </div>
+
+        <div class="message-text">
+            ${escapeHtml(text)}
+        </div>
+    `;
+
+    messages.appendChild(message);
+
+    input.value = "";
+
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function addSystemMessage(text) {
+
+    const message =
+        document.createElement("div");
+
+    message.className = "system-message";
+
+    message.textContent = text;
+
+    messages.appendChild(message);
+
+    messages.scrollTop =
+        messages.scrollHeight;
+}
+
+/* SECURITY */
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
+/* DEMO */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    setTimeout(() => {
+        toast("به Movie Night خوش اومدی 🎬❤️");
+    }, 700);
+
+});
+
+</script>
 
 </body>
 </html>
-echo salam
