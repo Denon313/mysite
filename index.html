@@ -2499,10 +2499,7 @@ async function loadInventory(){
                 "/api/movies"
             );
 
-        const text = await response.text();
-        console.log("UPLOAD RESPONSE:", response.status, text);
-        const data = JSON.parse(text);
-            await response.json();
+        const data = await response.json();
 
         if(!data.success)
             return;
