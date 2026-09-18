@@ -29,7 +29,7 @@ DB_PATH = BASE_DIR / "database.db"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 HOST = "0.0.0.0"
-PORT = 5000
+PORT = int(os.environ.get("PORT", 5000))
 
 # رمز مدیریت را در Termux با متغیر محیطی تنظیم کن:
 # export ADMIN_PASSWORD='رمز شما'
