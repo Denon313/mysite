@@ -14,7 +14,7 @@
             window.location.hostname === "localhost" ||
             window.location.hostname === "127.0.0.1"
                 ? "http://127.0.0.1:5000"
-                : "https://movie-night-backend-production-9b85.up.railway.app",
+                : "https://movie-night-backend-production.up.railway.app",
 
         SOCKET_PATH: "/socket.io",
 
