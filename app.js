@@ -1302,6 +1302,106 @@
 
 
         socket.on(
+            "spy_private_role",
+            (data) => {
+
+                if (!data) {
+                    return;
+                }
+
+                if (
+                    !state.currentGame ||
+                    state.currentGame.type !== "spy"
+                ) {
+                    return;
+                }
+
+                state.currentGame.spyRole =
+                    data;
+
+                renderSpyPrivateRole(
+                    data
+                );
+            }
+        );
+
+
+        socket.on(
+            "spy_game_state",
+            (data) => {
+
+                if (!data) {
+                    return;
+                }
+
+                if (
+                    !state.currentGame ||
+                    state.currentGame.type !== "spy"
+                ) {
+                    return;
+                }
+
+                state.currentGame.spyState =
+                    data;
+
+                renderSpyGameState(
+                    data
+                );
+            }
+        );
+
+
+        socket.on(
+            "spy_voting_started",
+            (data) => {
+
+                if (!data) {
+                    return;
+                }
+
+                if (
+                    !state.currentGame ||
+                    state.currentGame.type !== "spy"
+                ) {
+                    return;
+                }
+
+                state.currentGame.spyState =
+                    data;
+
+                renderSpyVoting(
+                    data
+                );
+            }
+        );
+
+
+        socket.on(
+            "spy_game_finished",
+            (data) => {
+
+                if (!data) {
+                    return;
+                }
+
+                if (
+                    !state.currentGame ||
+                    state.currentGame.type !== "spy"
+                ) {
+                    return;
+                }
+
+                state.currentGame.spyResult =
+                    data;
+
+                renderSpyResult(
+                    data
+                );
+            }
+        );
+
+
+        socket.on(
             "game_state_update",
             (data) => {
 
@@ -1967,6 +2067,380 @@
         }
 
         content.appendChild(info);
+    }
+
+
+    function renderSpyPrivateRole(data) {
+
+        const content =
+            $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        const old =
+            document.querySelector(
+                ".spy-private-role"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const box =
+            document.createElement("div");
+
+        box.className =
+            "spy-private-role";
+
+        box.style.margin =
+            "15px";
+
+        box.style.padding =
+            "24px";
+
+        box.style.borderRadius =
+            "20px";
+
+        box.style.textAlign =
+            "center";
+
+        box.style.background =
+            "rgba(255,255,255,0.06)";
+
+        box.style.border =
+            "1px solid rgba(255,255,255,0.12)";
+
+        const icon =
+            document.createElement("div");
+
+        icon.style.fontSize =
+            "48px";
+
+        const title =
+            document.createElement("h3");
+
+        title.style.margin =
+            "10px 0";
+
+        const message =
+            document.createElement("p");
+
+        message.style.marginTop =
+            "10px";
+
+        message.style.fontSize =
+            "18px";
+
+        if (data.role === "spy") {
+
+            icon.textContent =
+                "🕵️";
+
+            title.textContent =
+                "شما جاسوس هستید";
+
+            message.textContent =
+                "کلمه مخفی را نمی‌دانید. با سرنخ‌ها جاسوس نبودنتان را نشان دهید!";
+
+        } else {
+
+            icon.textContent =
+                "🟢";
+
+            title.textContent =
+                "شما شهروند هستید";
+
+            message.textContent =
+                `کلمه مخفی: ${data.word || "—"}`;
+        }
+
+        box.appendChild(icon);
+        box.appendChild(title);
+        box.appendChild(message);
+
+        content.appendChild(box);
+    }
+
+
+    function renderSpyGameState(data) {
+
+        const content =
+            $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        if (!state.currentGame) {
+            return;
+        }
+
+        const role =
+            state.currentGame.spyRole;
+
+        if (role) {
+            renderSpyPrivateRole(
+                role
+            );
+        }
+
+        const old =
+            document.querySelector(
+                ".spy-phase-info"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const box =
+            document.createElement("div");
+
+        box.className =
+            "spy-phase-info system-message";
+
+        if (data.phase === "discussion") {
+
+            box.textContent =
+                "💬 مرحله بحث شروع شده است.";
+
+        } else if (data.phase === "voting") {
+
+            box.textContent =
+                "🗳️ رأی‌گیری شروع شد — رأی خودت را انتخاب کن.";
+
+        } else if (data.phase === "finished") {
+
+            box.textContent =
+                "🏁 بازی به پایان رسید.";
+
+        } else {
+
+            box.textContent =
+                `مرحله بازی: ${data.phase || "آماده‌سازی"}`;
+        }
+
+        content.appendChild(box);
+    }
+
+
+    function renderSpyVoting(data) {
+
+        const content =
+            $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        renderSpyGameState(
+            data
+        );
+
+        const old =
+            document.querySelector(
+                ".spy-voting-box"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const box =
+            document.createElement("div");
+
+        box.className =
+            "spy-voting-box";
+
+        box.style.margin =
+            "15px";
+
+        box.style.padding =
+            "20px";
+
+        box.style.borderRadius =
+            "18px";
+
+        box.style.background =
+            "rgba(255,255,255,0.05)";
+
+        const title =
+            document.createElement("h3");
+
+        title.textContent =
+            "🗳️ به چه کسی شک داری؟";
+
+        title.style.textAlign =
+            "center";
+
+        box.appendChild(title);
+
+        const players =
+            data.players || [];
+
+        players.forEach(
+            (player) => {
+
+                if (
+                    player ===
+                    state.currentUser?.username
+                ) {
+                    return;
+                }
+
+                const button =
+                    document.createElement("button");
+
+                button.type =
+                    "button";
+
+                button.textContent =
+                    `🎯 ${player}`;
+
+                button.style.display =
+                    "block";
+
+                button.style.width =
+                    "100%";
+
+                button.style.marginTop =
+                    "10px";
+
+                button.style.padding =
+                    "13px";
+
+                button.style.borderRadius =
+                    "12px";
+
+                button.style.border =
+                    "0";
+
+                button.style.cursor =
+                    "pointer";
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        if (
+                            !state.socket?.connected
+                        ) {
+                            toast(
+                                "اتصال به سرور برقرار نیست."
+                            );
+                            return;
+                        }
+
+                        state.socket.emit(
+                            "spy_vote",
+                            {
+                                game_id:
+                                    data.game_id,
+
+                                voter:
+                                    state.currentUser?.username,
+
+                                target:
+                                    player
+                            }
+                        );
+
+                        button.disabled =
+                            true;
+
+                        button.textContent =
+                            "✅ رأی ثبت شد";
+                    }
+                );
+
+                box.appendChild(
+                    button
+                );
+            }
+        );
+
+        content.appendChild(box);
+    }
+
+
+    function renderSpyResult(data) {
+
+        const content =
+            $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        const old =
+            document.querySelector(
+                ".spy-result-box"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const box =
+            document.createElement("div");
+
+        box.className =
+            "spy-result-box";
+
+        box.style.margin =
+            "15px";
+
+        box.style.padding =
+            "24px";
+
+        box.style.borderRadius =
+            "20px";
+
+        box.style.textAlign =
+            "center";
+
+        box.style.background =
+            "rgba(255,255,255,0.06)";
+
+        const title =
+            document.createElement("h2");
+
+        title.textContent =
+            data.winner === "citizens"
+                ? "🎉 شهروندها برنده شدند!"
+                : "🕵️ جاسوس برنده شد!";
+
+        const spy =
+            document.createElement("p");
+
+        spy.textContent =
+            `جاسوس: ${data.spy || "نامشخص"}`;
+
+        spy.style.marginTop =
+            "12px";
+
+        box.appendChild(title);
+        box.appendChild(spy);
+
+        if (data.common_word) {
+
+            const word =
+                document.createElement("p");
+
+            word.textContent =
+                `کلمه مخفی: ${data.common_word}`;
+
+            word.style.marginTop =
+                "8px";
+
+            box.appendChild(
+                word
+            );
+        }
+
+        content.appendChild(box);
     }
 
 
