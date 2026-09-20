@@ -197,34 +197,33 @@
     ===================================================== */
 
     function setupLoginButtons() {
-        $$(".player-login").forEach((button) => {
+        document.addEventListener("click", (event) => {
+            const button = event.target.closest(".player-login");
 
-            button.addEventListener("click", () => {
+            if (!button) {
+                return;
+            }
 
-                const username =
-                    button.dataset.username;
+            const username = button.dataset.username;
 
-                if (!username) {
-                    return;
-                }
+            if (!username) {
+                return;
+            }
 
-                const player =
-                    CONFIG.PLAYERS[username];
+            const player = CONFIG.PLAYERS[username];
 
-                if (!player) {
-                    return;
-                }
+            if (!player) {
+                return;
+            }
 
-                if (player.role === "admin") {
-                    openAdminPassword(username);
-                    return;
-                }
+            if (player.role === "admin") {
+                openAdminPassword(username);
+                return;
+            }
 
-                loginAs(username, "");
-            });
+            loginAs(username, "");
         });
     }
-
 
     function openAdminPassword(username) {
         state.pendingAdminLogin = username;
