@@ -1077,6 +1077,19 @@
                     }
                 );
 
+                if (
+                    state.currentGame?.type === "spy-lobby" &&
+                    state.currentUser?.username
+                ) {
+                    socket.emit(
+                        "spy_lobby_join",
+                        {
+                            username:
+                                state.currentUser.username
+                        }
+                    );
+                }
+
                 renderMembers();
 
                 addActivity(
