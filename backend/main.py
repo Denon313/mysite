@@ -4,6 +4,7 @@ import os
 import sqlite3
 import uuid
 import time
+import traceback
 import secrets
 from pathlib import Path
 from datetime import datetime
@@ -1485,14 +1486,38 @@ def start_game():
 
     game_id = uuid.uuid4().hex
 
+    print(
+        "START_GAME DEBUG:",
+        "type=", game_type,
+        "username=", username,
+        "players=", players,
+        "count=", len(players),
+        flush=True
+    )
+
     if game_type == "spy":
+        print(
+            "START_GAME DEBUG: creating spy game",
+            flush=True
+        )
+
         active_games[game_id] = create_spy_game(
             game_id,
             players,
             username
         )
 
+        print(
+            "START_GAME DEBUG: spy game created",
+            flush=True
+        )
+
         start_spy_server_timer(game_id)
+
+        print(
+            "START_GAME DEBUG: timer started",
+            flush=True
+        )
 
     else:
         active_games[game_id] = {
