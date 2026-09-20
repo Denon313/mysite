@@ -181,6 +181,18 @@ def init_db():
         )
     """)
 
+    chat_columns = {
+        row["name"]
+        for row in conn.execute(
+            "PRAGMA table_info(chat_messages)"
+        ).fetchall()
+    }
+
+    if "game_id" not in chat_columns:
+        conn.execute(
+            "ALTER TABLE chat_messages ADD COLUMN game_id TEXT DEFAULT NULL"
+        )
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS scenarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -620,25 +632,46 @@ def get_recent_activities():
     ]
 
 
-def get_chat_history():
+def get_chat_history(game_id=None):
 
     conn = get_db()
 
-    rows = conn.execute(
-        """
-        SELECT
-            id,
-            username,
-            display_name,
-            message,
-            is_image,
-            created_at
-        FROM chat_messages
-        ORDER BY id DESC
-        LIMIT ?
-        """,
-        (MAX_CHAT_MESSAGES,)
-    ).fetchall()
+    if game_id:
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                username,
+                display_name,
+                message,
+                is_image,
+                game_id,
+                created_at
+            FROM chat_messages
+            WHERE game_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (game_id, MAX_CHAT_MESSAGES)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                username,
+                display_name,
+                message,
+                is_image,
+                game_id,
+                created_at
+            FROM chat_messages
+            WHERE game_id IS NULL
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (MAX_CHAT_MESSAGES,)
+        ).fetchall()
 
     conn.close()
 
@@ -648,22 +681,22 @@ def get_chat_history():
             "username": row["username"],
             "display_name": row["display_name"],
             "message": row["message"],
-            "is_image":
-                bool(row["is_image"]),
+            "is_image": bool(row["is_image"]),
+            "game_id": row["game_id"],
             "created_at": row["created_at"]
         }
         for row in rows
     ]
 
     result.reverse()
-
     return result
 
 
 def save_chat_message(
     username,
     message,
-    is_image=False
+    is_image=False,
+    game_id=None
 ):
 
     player = get_player(username)
@@ -689,15 +722,17 @@ def save_chat_message(
             username,
             display_name,
             message,
-            is_image
+            is_image,
+            game_id
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             username,
             display_name,
             message,
-            int(is_image)
+            int(is_image),
+            game_id
         )
     )
 
@@ -1879,7 +1914,7 @@ def spy_timer_loop(game_id):
             socketio.emit(
                 "spy_voting_started",
                 get_spy_public_state(game),
-                room=MAIN_ROOM
+                room=f"game_{game_id}"
             )
 
             continue
@@ -1890,13 +1925,13 @@ def spy_timer_loop(game_id):
             socketio.emit(
                 "spy_game_finished",
                 result,
-                room=MAIN_ROOM
+                room=f"game_{game_id}"
             )
 
             socketio.emit(
                 "spy_game_state",
                 get_spy_public_state(game),
-                room=MAIN_ROOM
+                room=f"game_{game_id}"
             )
 
             return
@@ -1918,7 +1953,7 @@ def broadcast_spy_public_state(game_id):
     socketio.emit(
         "spy_game_state",
         get_spy_public_state(game),
-        room=MAIN_ROOM
+        room=f"game_{game_id}"
     )
 
 
@@ -1949,7 +1984,7 @@ def finish_spy_game_if_needed(game_id):
             socketio.emit(
                 "spy_game_finished",
                 result,
-                room=MAIN_ROOM
+                room=f"game_{game_id}"
             )
 
             broadcast_spy_public_state(game_id)
@@ -2278,100 +2313,166 @@ def socket_profile_update(data):
 
 
 @socketio.on("game_chat_history")
-def socket_chat_history():
+def socket_chat_history(data=None):
+    data = data or {}
+
+    info = user_sids.get(request.sid)
+    if not info:
+        return
+
+    username = info["username"]
+
+    game_id = str(
+        data.get("game_id", "")
+    ).strip() or None
+
+    if game_id:
+        game = active_games.get(game_id)
+
+        if not game:
+            emit(
+                "game_chat_error",
+                {"error": "این بازی دیگر فعال نیست."}
+            )
+            return
+
+        if username not in game.get("players", []):
+            emit(
+                "game_chat_error",
+                {"error": "شما عضو این بازی نیستید."}
+            )
+            return
 
     emit(
         "game_chat_history",
         {
-            "messages":
-                get_chat_history()
+            "messages": get_chat_history(game_id)
         }
     )
 
 
 @socketio.on("game_chat")
 def socket_chat(data):
-
     data = data or {}
 
-    info = user_sids.get(
-            request.sid
-        )
-
+    info = user_sids.get(request.sid)
     if not info:
         return
 
     username = info["username"]
 
     message = str(
-        data.get(
-            "message",
-            ""
-        )
+        data.get("message", "")
     ).strip()
+
+    game_id = str(
+        data.get("game_id", "")
+    ).strip() or None
 
     if not message:
         return
 
     if len(message) > 500:
-
         emit(
             "game_chat_error",
             {
-                "error":
-                    "پیام خیلی طولانی است."
+                "error": "پیام خیلی طولانی است."
             }
         )
-
         return
 
+    if game_id:
+        game = active_games.get(game_id)
+
+        if not game:
+            emit(
+                "game_chat_error",
+                {"error": "این بازی دیگر فعال نیست."}
+            )
+            return
+
+        if username not in game.get("players", []):
+            emit(
+                "game_chat_error",
+                {"error": "شما عضو این بازی نیستید."}
+            )
+            return
+
     saved = save_chat_message(
-            username,
-            message,
-            False
-        )
+        username,
+        message,
+        False,
+        game_id
+    )
+
+    target_room = (
+        f"game_{game_id}"
+        if game_id
+        else MAIN_ROOM
+    )
 
     socketio.emit(
         "game_chat_message",
         saved,
-        room=MAIN_ROOM
+        room=target_room
     )
 
 
 @socketio.on("game_chat_image")
 def socket_chat_image(data):
-
     data = data or {}
 
-    info = user_sids.get(
-            request.sid
-        )
-
+    info = user_sids.get(request.sid)
     if not info:
         return
 
     username = info["username"]
 
     image_url = str(
-        data.get(
-            "image_url",
-            ""
-        )
+        data.get("image_url", "")
     ).strip()
+
+    game_id = str(
+        data.get("game_id", "")
+    ).strip() or None
 
     if not image_url:
         return
 
+    if game_id:
+        game = active_games.get(game_id)
+
+        if not game:
+            emit(
+                "game_chat_error",
+                {"error": "این بازی دیگر فعال نیست."}
+            )
+            return
+
+        if username not in game.get("players", []):
+            emit(
+                "game_chat_error",
+                {"error": "شما عضو این بازی نیستید."}
+            )
+            return
+
     saved = save_chat_message(
-            username,
-            image_url,
-            True
-        )
+        username,
+        image_url,
+        True,
+        game_id
+    )
+
+    target_room = (
+        f"game_{game_id}"
+        if game_id
+        else MAIN_ROOM
+    )
 
     socketio.emit(
         "game_chat_message",
         saved,
-        room=MAIN_ROOM
+        room=target_room
     )
 
 
@@ -2417,18 +2518,81 @@ def socket_status_update(data):
 
 @socketio.on("game_open")
 def socket_game_open(data):
-
     data = data or {}
 
-    username = data.get(
-        "username"
-    )
+    username = str(
+        data.get("username", "")
+    ).strip()
 
-    game_type = data.get(
-        "game_type"
-    )
+    game_type = str(
+        data.get("game_type", "")
+    ).strip()
+
+    game_id = str(
+        data.get("game_id", "")
+    ).strip()
 
     if game_type not in VALID_GAMES:
+        return
+
+    if not valid_username(username):
+        return
+
+    # اگر شناسه بازی از کلاینت آمده، همان بازی فعال را پیدا کن.
+    game = None
+
+    if game_id:
+        game = active_games.get(game_id)
+
+    # برای جاسوس، اگر game_id ارسال نشده ولی یک بازی فعال
+    # وجود دارد که کاربر داخل آن است، آن بازی را پیدا کن.
+    if game is None and game_type == "spy":
+        for active_game in active_games.values():
+            if (
+                active_game.get("game_type") == "spy"
+                and username in active_game.get("players", [])
+                and active_game.get("phase") != "finished"
+            ):
+                game = active_game
+                game_id = active_game.get("id", "")
+                break
+
+    if game is not None:
+        if username not in game.get("players", []):
+            emit(
+                "game_error",
+                {
+                    "error": "شما عضو این بازی نیستید."
+                }
+            )
+            return
+
+        game_room = f"game_{game_id}"
+
+        join_room(game_room)
+
+        emit(
+            "game_room_joined",
+            {
+                "game_id": game_id,
+                "game_type": game_type,
+                "messages": get_chat_history(game_id)
+            }
+        )
+
+        emit(
+            "game_state_update",
+            {
+                "game_type": game_type,
+                "game_id": game_id,
+                "game_state": {
+                    "phase": game.get("phase"),
+                    "phase_ends_at": game.get("phase_ends_at"),
+                    "message": "بازی آماده است."
+                }
+            }
+        )
+
         return
 
     emit(
@@ -2437,8 +2601,7 @@ def socket_game_open(data):
             "game_type": game_type,
             "game_state": {
                 "phase": "waiting",
-                "message":
-                    "بازی در حال آماده‌سازی است."
+                "message": "بازی در حال آماده‌سازی است."
             }
         }
     )

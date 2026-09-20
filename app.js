@@ -1229,94 +1229,53 @@
         socket.on(
             "game_chat_message",
             (data) => {
+                if (
+                    data?.game_id &&
+                    state.currentGame?.type === "spy" &&
+                    String(data.game_id) === String(state.currentGame.gameId)
+                ) {
+                    renderSpyChatMessage(data);
+                    return;
+                }
 
-                addChatMessage(
-                    data
-                );
+                addChatMessage(data);
 
                 if (!state.chatOpen) {
-
                     state.unreadMessages++;
-
                     updateChatBadge();
                 }
             }
         );
 
-
         socket.on(
             "game_chat_history",
             (data) => {
-
                 const messages =
                     Array.isArray(data)
                         ? data
                         : data?.messages || [];
 
-                renderChatHistory(
-                    messages
-                );
+                if (
+                    state.currentGame?.type === "spy" &&
+                    state.currentGame?.gameId
+                ) {
+                    renderSpyChatHistory(messages);
+                    return;
+                }
+
+                renderChatHistory(messages);
             }
         );
-
 
         socket.on(
             "game_chat_error",
             (data) => {
-
                 toast(
                     data?.error ||
                     "ارسال پیام انجام نشد."
                 );
             }
         );
-
-
-        socket.on(
-            "game_system_message",
-            (data) => {
-
-                addSystemMessage(
-                    data?.message ||
-                    "یک اتفاق جدید افتاد."
-                );
-            }
-        );
-
-
-        socket.on(
-            "game_status_update",
-            (data) => {
-
-                if (!data?.username) {
-                    return;
-                }
-
-                mergePlayer(data);
-
-                renderMembers();
-            }
-        );
-
-
-        // SPY_AUTO_ROLE_REQUEST
-        socket.on("game_started", (data) => {
-            if (data?.game_type) {
-                openGame(data.game_type, data);
-
-                if (
-                    data.game_type === "spy" &&
-                    data.game_id &&
-                    state.currentUser?.username &&
-                    state.socket?.connected
-                ) {
-                    state.socket.emit("spy_get_state", {
-                        game_id: data.game_id,
-                        username: state.currentUser.username
-                    });
-                }
-            }
-        });
 
         socket.on("spy_lobby_update", (data) => {
 
@@ -1554,6 +1513,74 @@
 
         socket.on("game_state_update", (data) => {
             updateCurrentGame(data);
+        });
+
+        socket.on("game_started", (data) => {
+            if (!data?.game_type) {
+                return;
+            }
+
+            openGame(data.game_type, data);
+
+            if (
+                data.game_type === "spy" &&
+                data.game_id &&
+                state.currentUser?.username &&
+                state.socket?.connected
+            ) {
+                state.socket.emit("spy_get_state", {
+                    game_id: data.game_id,
+                    username: state.currentUser.username
+                });
+            }
+        });
+
+        socket.on("game_room_joined", (data) => {
+            if (!data) {
+                return;
+            }
+
+            const gameId = data.game_id || null;
+            const gameType =
+                data.game_type ||
+                state.currentGame?.type ||
+                null;
+
+            if (!state.currentGame) {
+                state.currentGame = {
+                    type: gameType,
+                    data: data,
+                    gameId: gameId,
+                    spyRole: null,
+                    spyState: null,
+                    spyResult: null
+                };
+            } else {
+                state.currentGame.gameId =
+                    gameId || state.currentGame.gameId;
+
+                if (gameType) {
+                    state.currentGame.type = gameType;
+                }
+
+                state.currentGame.data = data;
+            }
+
+            if (
+                gameType === "spy" &&
+                state.currentGame?.type === "spy"
+            ) {
+                if (
+                    gameId &&
+                    state.currentUser?.username &&
+                    state.socket?.connected
+                ) {
+                    state.socket.emit("spy_get_state", {
+                        game_id: gameId,
+                        username: state.currentUser.username
+                    });
+                }
+            }
         });
     }
 
@@ -2238,110 +2265,499 @@
         }
     }
 
-    function openGame(gameType, serverData = null) {
 
-        const game =
-            CONFIG.GAMES[gameType];
+function openGame(gameType, serverData = null) {
+    const game = CONFIG.GAMES[gameType];
+    if (!game) {
+        toast("این بازی پیدا نشد.");
+        return;
+    }
 
-        if (!game) {
-            toast("این بازی پیدا نشد.");
-            return;
-        }
+    state.currentGame = {
+        type: gameType,
+        data: serverData,
+        gameId: serverData?.game_id || serverData?.id || null,
+        spyRole: null,
+        spyState: null,
+        spyResult: null
+    };
 
-        state.currentGame = {
-            type: gameType,
-            data: serverData
-        };
+    const content = $("#gameContent");
+    if (!content) return;
 
-        const content =
-            $("#gameContent");
+    content.innerHTML = "";
 
-        if (!content) {
-            return;
-        }
+    if (gameType === "spy") {
+        renderSpyGameShell();
+    } else {
+        const header = document.createElement("div");
+        header.style.textAlign = "center";
+        header.style.padding = "30px 10px 20px";
 
-        content.innerHTML = "";
+        const icon = document.createElement("div");
+        icon.style.fontSize = "54px";
+        icon.textContent = game.emoji;
 
-        const header =
-            document.createElement("div");
+        const title = document.createElement("h2");
+        title.textContent = game.title;
+        title.style.marginTop = "12px";
 
-        header.style.textAlign =
-            "center";
-
-        header.style.padding =
-            "30px 10px 20px";
-
-        const icon =
-            document.createElement("div");
-
-        icon.style.fontSize =
-            "54px";
-
-        icon.textContent =
-            game.emoji;
-
-        const title =
-            document.createElement("h2");
-
-        title.textContent =
-            game.title;
-
-        title.style.marginTop =
-            "12px";
-
-        const description =
-            document.createElement("p");
-
-        description.style.marginTop =
-            "8px";
-
-        description.style.color =
-            "var(--muted)";
-
-        description.style.fontSize =
-            "11px";
-
-        description.textContent =
-            getGameDescription(
-                gameType
-            );
+        const description = document.createElement("p");
+        description.style.marginTop = "8px";
+        description.style.color = "var(--muted)";
+        description.style.fontSize = "11px";
+        description.textContent = getGameDescription(gameType);
 
         header.appendChild(icon);
         header.appendChild(title);
         header.appendChild(description);
-
         content.appendChild(header);
 
-        const status =
-            document.createElement("div");
-
-        status.className =
-            "system-message";
-
-        status.textContent =
-            "در حال اتصال به اتاق بازی...";
-
+        const status = document.createElement("div");
+        status.className = "system-message";
+        status.textContent = "در حال اتصال به اتاق بازی...";
         content.appendChild(status);
-
-        show($("#gameModal"));
-
-        if (state.socket?.connected) {
-
-            state.socket.emit(
-                "game_open",
-                {
-                    username:
-                        state.currentUser?.username,
-
-                    game_type:
-                        gameType
-                }
-            );
-        }
     }
 
+    show($("#gameModal"));
 
-    function getGameDescription(gameType) {
+    if (state.socket?.connected) {
+        state.socket.emit("game_open", {
+            username: state.currentUser?.username,
+            game_type: gameType,
+            game_id: state.currentGame.gameId
+        });
+    }
+}
+
+
+function renderSpyGameShell() {
+    const content = $("#gameContent");
+    if (!content) return;
+
+    content.innerHTML = `
+        <div class="spy-game-shell">
+
+            <div class="spy-game-header">
+                <div class="spy-game-icon">🕵️</div>
+                <div>
+                    <h2>جاسوس</h2>
+                    <p>پیداش کن... قبل از اینکه دیر بشه!</p>
+                </div>
+            </div>
+
+            <div id="spyRoleArea"></div>
+
+            <div class="spy-game-status">
+                <div id="spyPhaseTitle">در حال اتصال...</div>
+                <div id="spyTimer" class="spy-timer">--</div>
+            </div>
+
+            <div id="spyPlayersArea" class="spy-section"></div>
+
+            <div id="spyVotingArea" class="spy-section"></div>
+
+            <div id="spyResultArea" class="spy-section"></div>
+
+            <div class="spy-chat-section">
+                <div class="spy-section-title">
+                    💬 چت بازی
+                </div>
+
+                <div id="spyChatMessages" class="spy-chat-messages"></div>
+
+                <div class="spy-chat-input-row">
+                    <input
+                        id="spyChatInput"
+                        type="text"
+                        maxlength="500"
+                        placeholder="پیامت رو بنویس..."
+                        autocomplete="off"
+                    >
+                    <button type="button" id="spyChatSend">ارسال</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const input = $("#spyChatInput");
+    const send = $("#spyChatSend");
+
+    if (send) {
+        send.addEventListener("click", sendSpyChatMessage);
+    }
+
+    if (input) {
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendSpyChatMessage();
+            }
+        });
+    }
+
+    if (state.socket?.connected && state.currentGame?.gameId) {
+        state.socket.emit("game_chat_history", {
+            game_id: state.currentGame.gameId
+        });
+    }
+}
+
+
+function sendSpyChatMessage() {
+    const input = $("#spyChatInput");
+    if (!input) return;
+
+    const message = input.value.trim();
+    if (!message) return;
+
+    if (!state.socket?.connected) {
+        toast("اتصال برقرار نیست.");
+        return;
+    }
+
+    state.socket.emit("game_chat", {
+        username: state.currentUser?.username,
+        message,
+        game_id: state.currentGame?.gameId
+    });
+
+    input.value = "";
+    input.focus();
+}
+
+
+function renderSpyChatHistory(messages) {
+    const box = $("#spyChatMessages");
+    if (!box) return;
+
+    box.innerHTML = "";
+
+    (messages || []).forEach((message) => {
+        renderSpyChatMessage(message, false);
+    });
+
+    box.scrollTop = box.scrollHeight;
+}
+
+
+function renderSpyChatMessage(data, scroll = true) {
+    const box = $("#spyChatMessages");
+    if (!box || !data) return;
+
+    const item = document.createElement("div");
+    item.className = "spy-chat-message";
+
+    const name = document.createElement("strong");
+    name.textContent = data.username || "کاربر";
+
+    const text = document.createElement("span");
+    text.textContent = data.message || "";
+
+    item.appendChild(name);
+    item.appendChild(text);
+    box.appendChild(item);
+
+    if (scroll) {
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+function renderSpyGameShell() {
+    const content = $("#gameContent");
+
+    if (!content) {
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="spy-game-shell"
+             style="
+                padding:12px;
+                display:flex;
+                flex-direction:column;
+                gap:14px;
+             ">
+
+            <div style="
+                text-align:center;
+                padding:18px 10px 6px;
+            ">
+                <div style="font-size:48px;">🕵️</div>
+
+                <h2 style="
+                    margin:8px 0 4px;
+                ">
+                    اتاق جاسوس
+                </h2>
+
+                <div style="
+                    color:var(--muted);
+                    font-size:12px;
+                ">
+                    پیدا کن چه کسی کلمه مخفی را نمی‌داند
+                </div>
+            </div>
+
+            <div id="spyRoleArea"></div>
+
+            <div id="spyTimerArea"
+                 class="system-message"
+                 style="
+                    text-align:center;
+                    font-size:18px;
+                    font-weight:800;
+                 ">
+                ⏳ در حال آماده‌سازی...
+            </div>
+
+            <div id="spyPlayersArea"></div>
+
+            <div id="spyPhaseArea"></div>
+
+            <div id="spyVotingArea"></div>
+
+            <div id="spyResultArea"></div>
+
+            <div style="
+                border-top:1px solid rgba(255,255,255,.08);
+                padding-top:14px;
+            ">
+                <div style="
+                    font-size:15px;
+                    font-weight:800;
+                    margin-bottom:8px;
+                ">
+                    💬 چت اتاق
+                </div>
+
+                <div id="spyChatMessages"
+                     style="
+                        min-height:120px;
+                        max-height:260px;
+                        overflow-y:auto;
+                        padding:10px;
+                        border-radius:16px;
+                        background:rgba(255,255,255,.04);
+                        border:1px solid rgba(255,255,255,.08);
+                     ">
+                    <div style="
+                        text-align:center;
+                        color:var(--muted);
+                        font-size:12px;
+                    ">
+                        هنوز پیامی نیست 👋
+                    </div>
+                </div>
+
+                <div style="
+                    display:flex;
+                    gap:8px;
+                    margin-top:8px;
+                ">
+                    <input
+                        id="spyChatInput"
+                        type="text"
+                        maxlength="500"
+                        placeholder="پیامت رو بنویس..."
+                        style="
+                            flex:1;
+                            min-width:0;
+                            padding:12px;
+                            border-radius:14px;
+                            border:1px solid rgba(255,255,255,.1);
+                            background:rgba(255,255,255,.05);
+                            color:inherit;
+                            outline:none;
+                        "
+                    >
+
+                    <button
+                        id="spyChatSend"
+                        type="button"
+                        style="
+                            min-width:52px;
+                            border:0;
+                            border-radius:14px;
+                            cursor:pointer;
+                            font-size:20px;
+                        "
+                    >
+                        ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const sendButton = $("#spyChatSend");
+    const input = $("#spyChatInput");
+
+    if (sendButton) {
+        sendButton.addEventListener(
+            "click",
+            sendSpyChatMessage
+        );
+    }
+
+    if (input) {
+        input.addEventListener(
+            "keydown",
+            (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    sendSpyChatMessage();
+                }
+            }
+        );
+    }
+
+    renderSpyGameState(
+        state.currentGame.spyState || {
+            phase: "waiting"
+        }
+    );
+}
+
+
+function sendSpyChatMessage() {
+    if (!state.currentUser) {
+        return;
+    }
+
+    const input = $("#spyChatInput");
+
+    if (!input) {
+        return;
+    }
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    if (
+        message.length >
+        CONFIG.MAX_MESSAGE_LENGTH
+    ) {
+        toast(
+            `پیام باید حداکثر ${CONFIG.MAX_MESSAGE_LENGTH} کاراکتر باشد.`
+        );
+        return;
+    }
+
+    const gameId =
+        state.currentGame?.gameId ||
+        state.currentGame?.data?.game_id ||
+        null;
+
+    if (!gameId) {
+        toast("شناسه اتاق بازی هنوز آماده نیست.");
+        return;
+    }
+
+    if (!state.socket?.connected) {
+        toast("اتصال به سرور برقرار نیست.");
+        return;
+    }
+
+    state.socket.emit(
+        "game_chat",
+        {
+            username:
+                state.currentUser.username,
+            message,
+            game_id: gameId
+        }
+    );
+
+    input.value = "";
+    input.focus();
+}
+
+
+function renderSpyChatHistory(messages) {
+    const container = $("#spyChatMessages");
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = "";
+
+    if (!Array.isArray(messages) || !messages.length) {
+        container.innerHTML = `
+            <div style="
+                text-align:center;
+                color:var(--muted);
+                font-size:12px;
+                padding:20px 5px;
+            ">
+                هنوز پیامی نیست 👋
+            </div>
+        `;
+        return;
+    }
+
+    messages.forEach(
+        renderSpyChatMessage
+    );
+
+    container.scrollTop =
+        container.scrollHeight;
+}
+
+
+function renderSpyChatMessage(data) {
+    const container = $("#spyChatMessages");
+
+    if (!container || !data) {
+        return;
+    }
+
+    const item =
+        document.createElement("div");
+
+    item.style.marginBottom = "9px";
+    item.style.padding = "8px 10px";
+    item.style.borderRadius = "12px";
+    item.style.background =
+        "rgba(255,255,255,.04)";
+
+    const name =
+        data.display_name ||
+        data.username ||
+        "بازیکن";
+
+    const message =
+        data.is_image
+            ? "🖼️ تصویر"
+            : data.message || "";
+
+    item.innerHTML = `
+        <div style="
+            font-size:11px;
+            color:var(--muted);
+            margin-bottom:3px;
+        ">
+            ${escapeHtml(name)}
+        </div>
+
+        <div style="
+            font-size:13px;
+            word-break:break-word;
+        ">
+            ${escapeHtml(message)}
+        </div>
+    `;
+
+    container.appendChild(item);
+
+    container.scrollTop =
+        container.scrollHeight;
+}
+function getGameDescription(gameType) {
 
         switch (gameType) {
 
