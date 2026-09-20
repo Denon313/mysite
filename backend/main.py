@@ -1429,6 +1429,16 @@ VALID_GAMES = {
 }
 
 
+@app.get("/api/game/spy-lobby-debug")
+def spy_lobby_debug():
+    return jsonify({
+        "success": True,
+        "players": list(spy_lobby_players),
+        "count": len(spy_lobby_players),
+        "connected_users": list(connected_users.keys())
+    })
+
+
 @app.post("/api/game/start")
 def start_game():
     try:
