@@ -1431,6 +1431,24 @@ VALID_GAMES = {
 
 @app.post("/api/game/start")
 def start_game():
+    try:
+        return _start_game_debug()
+    except Exception as error:
+        print(
+            "START GAME ERROR:",
+            repr(error),
+            flush=True
+        )
+        traceback.print_exc()
+
+        return jsonify({
+            "error": "START_GAME_DEBUG_ERROR",
+            "exception": repr(error),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+def _start_game_debug():
     data = json_body()
 
     username = str(data.get("username", "")).strip()
