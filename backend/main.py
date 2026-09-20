@@ -307,7 +307,7 @@ SPY_DEFAULT_WORDS = [
 ]
 
 
-def create_spy_game(game_id, players, host):
+def create_spy_game(game_id, players, host, discussion_seconds=120):
     if len(players) < 3 or len(players) > 5:
         raise ValueError("بازی جاسوس به ۳ تا ۵ بازیکن نیاز دارد.")
 
@@ -341,7 +341,7 @@ def create_spy_game(game_id, players, host):
         "players": players,
         "phase": "discussion",
         "started_at": time.time(),
-        "discussion_seconds": 120,
+        "discussion_seconds": discussion_seconds,
         "voting_seconds": 10,
         "phase_ends_at": time.time() + 120,
         "votes": {},
@@ -1500,6 +1500,21 @@ def _start_game_debug():
     username = str(data.get("username", "")).strip()
     game_type = str(data.get("game_type", "")).strip()
 
+    discussion_seconds = 120
+
+    if game_type == "spy":
+        try:
+            discussion_seconds = int(
+                data.get("discussion_seconds", 120)
+            )
+        except (TypeError, ValueError):
+            discussion_seconds = 120
+
+        discussion_seconds = max(
+            10,
+            min(1800, discussion_seconds)
+        )
+
     if not valid_username(username):
         return jsonify({
             "error": "کاربر معتبر نیست."
@@ -1568,7 +1583,8 @@ def _start_game_debug():
         active_games[game_id] = create_spy_game(
             game_id,
             players,
-            username
+            username,
+            discussion_seconds
         )
 
         print(

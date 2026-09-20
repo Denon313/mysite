@@ -2062,7 +2062,7 @@
 
     // SPY_START_API_CONNECTED
 
-    async function startGameFromServer(gameType) {
+    async function startGameFromServer(gameType, discussionSeconds = null) {
 
         if (!state.currentUser?.username) {
             toast("ابتدا وارد حساب کاربری شو.");
@@ -2092,7 +2092,10 @@
                                 state.currentUser.username,
 
                             game_type:
-                                gameType
+                                gameType,
+
+                            discussion_seconds:
+                                discussionSeconds
                         })
                     }
                 );
@@ -2401,222 +2404,6 @@ function renderSpyGameShell() {
             game_id: state.currentGame.gameId
         });
     }
-}
-
-
-function sendSpyChatMessage() {
-    const input = $("#spyChatInput");
-    if (!input) return;
-
-    const message = input.value.trim();
-    if (!message) return;
-
-    if (!state.socket?.connected) {
-        toast("اتصال برقرار نیست.");
-        return;
-    }
-
-    state.socket.emit("game_chat", {
-        username: state.currentUser?.username,
-        message,
-        game_id: state.currentGame?.gameId
-    });
-
-    input.value = "";
-    input.focus();
-}
-
-
-function renderSpyChatHistory(messages) {
-    const box = $("#spyChatMessages");
-    if (!box) return;
-
-    box.innerHTML = "";
-
-    (messages || []).forEach((message) => {
-        renderSpyChatMessage(message, false);
-    });
-
-    box.scrollTop = box.scrollHeight;
-}
-
-
-function renderSpyChatMessage(data, scroll = true) {
-    const box = $("#spyChatMessages");
-    if (!box || !data) return;
-
-    const item = document.createElement("div");
-    item.className = "spy-chat-message";
-
-    const name = document.createElement("strong");
-    name.textContent = data.username || "کاربر";
-
-    const text = document.createElement("span");
-    text.textContent = data.message || "";
-
-    item.appendChild(name);
-    item.appendChild(text);
-    box.appendChild(item);
-
-    if (scroll) {
-        box.scrollTop = box.scrollHeight;
-    }
-}
-
-function renderSpyGameShell() {
-    const content = $("#gameContent");
-
-    if (!content) {
-        return;
-    }
-
-    content.innerHTML = `
-        <div class="spy-game-shell"
-             style="
-                padding:12px;
-                display:flex;
-                flex-direction:column;
-                gap:14px;
-             ">
-
-            <div style="
-                text-align:center;
-                padding:18px 10px 6px;
-            ">
-                <div style="font-size:48px;">🕵️</div>
-
-                <h2 style="
-                    margin:8px 0 4px;
-                ">
-                    اتاق جاسوس
-                </h2>
-
-                <div style="
-                    color:var(--muted);
-                    font-size:12px;
-                ">
-                    پیدا کن چه کسی کلمه مخفی را نمی‌داند
-                </div>
-            </div>
-
-            <div id="spyRoleArea"></div>
-
-            <div id="spyTimerArea"
-                 class="system-message"
-                 style="
-                    text-align:center;
-                    font-size:18px;
-                    font-weight:800;
-                 ">
-                ⏳ در حال آماده‌سازی...
-            </div>
-
-            <div id="spyPlayersArea"></div>
-
-            <div id="spyPhaseArea"></div>
-
-            <div id="spyVotingArea"></div>
-
-            <div id="spyResultArea"></div>
-
-            <div style="
-                border-top:1px solid rgba(255,255,255,.08);
-                padding-top:14px;
-            ">
-                <div style="
-                    font-size:15px;
-                    font-weight:800;
-                    margin-bottom:8px;
-                ">
-                    💬 چت اتاق
-                </div>
-
-                <div id="spyChatMessages"
-                     style="
-                        min-height:120px;
-                        max-height:260px;
-                        overflow-y:auto;
-                        padding:10px;
-                        border-radius:16px;
-                        background:rgba(255,255,255,.04);
-                        border:1px solid rgba(255,255,255,.08);
-                     ">
-                    <div style="
-                        text-align:center;
-                        color:var(--muted);
-                        font-size:12px;
-                    ">
-                        هنوز پیامی نیست 👋
-                    </div>
-                </div>
-
-                <div style="
-                    display:flex;
-                    gap:8px;
-                    margin-top:8px;
-                ">
-                    <input
-                        id="spyChatInput"
-                        type="text"
-                        maxlength="500"
-                        placeholder="پیامت رو بنویس..."
-                        style="
-                            flex:1;
-                            min-width:0;
-                            padding:12px;
-                            border-radius:14px;
-                            border:1px solid rgba(255,255,255,.1);
-                            background:rgba(255,255,255,.05);
-                            color:inherit;
-                            outline:none;
-                        "
-                    >
-
-                    <button
-                        id="spyChatSend"
-                        type="button"
-                        style="
-                            min-width:52px;
-                            border:0;
-                            border-radius:14px;
-                            cursor:pointer;
-                            font-size:20px;
-                        "
-                    >
-                        ➤
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    const sendButton = $("#spyChatSend");
-    const input = $("#spyChatInput");
-
-    if (sendButton) {
-        sendButton.addEventListener(
-            "click",
-            sendSpyChatMessage
-        );
-    }
-
-    if (input) {
-        input.addEventListener(
-            "keydown",
-            (event) => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    sendSpyChatMessage();
-                }
-            }
-        );
-    }
-
-    renderSpyGameState(
-        state.currentGame.spyState || {
-            phase: "waiting"
-        }
-    );
 }
 
 
