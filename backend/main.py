@@ -1937,7 +1937,7 @@ def finish_spy_game_if_needed(game_id):
             0
         ):
             start_spy_voting(game)
-            broadcast_spy_public_state(game)
+            broadcast_spy_public_state(game_id)
 
     elif game.get("phase") == "voting":
         if time.time() >= game.get(
@@ -1952,7 +1952,7 @@ def finish_spy_game_if_needed(game_id):
                 room=MAIN_ROOM
             )
 
-            broadcast_spy_public_state(game)
+            broadcast_spy_public_state(game_id)
 
 
 @socketio.on("spy_start_voting")
@@ -2067,7 +2067,7 @@ def spy_vote(data):
             room=MAIN_ROOM
         )
 
-        broadcast_spy_public_state(game)
+        broadcast_spy_public_state(game_id)
 
 
 @socketio.on("spy_get_state")
