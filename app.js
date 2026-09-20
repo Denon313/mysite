@@ -3529,7 +3529,7 @@ function closeGame() {
 
                         if (game === "spy") {
 
-                            openSpyLobby();
+                            SpyGameUI.open();
 
                         } else {
 

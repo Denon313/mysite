@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from flask_socketio import join_room, leave_room
 import random
 import re
 import threading
@@ -695,7 +696,7 @@ def register_spy_socket(
             )
             return
 
-        socketio.join_room(
+        join_room(
             room_name(game_id)
         )
 
@@ -902,7 +903,7 @@ def register_spy_socket(
         ).strip()
 
         if game_id:
-            socketio.join_room(
+            join_room(
                 room_name(game_id)
             )
 
@@ -1047,7 +1048,7 @@ def register_spy_socket(
             emit_state(game_id)
 
             try:
-                socketio.leave_room(
+                leave_room(
                     room_name(game_id)
                 )
             except Exception:
