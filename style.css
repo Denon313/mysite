@@ -1457,3 +1457,317 @@ input:focus-visible {
         transition-duration: .01ms !important;
     }
 }
+
+/* ===== SPY GAME CHAT ===== */
+
+.spy-game-shell .spy-chat-section {
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 22px;
+    background: rgba(255,255,255,.035);
+    backdrop-filter: blur(14px);
+}
+
+.spy-game-shell .spy-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.spy-game-shell .spy-main-chat {
+    height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.18);
+    scroll-behavior: smooth;
+}
+
+.spy-game-shell .spy-main-chat .chat-message {
+    display: flex;
+    margin: 8px 0;
+}
+
+.spy-game-shell .spy-main-chat .chat-message.mine {
+    justify-content: flex-end;
+}
+
+.spy-game-shell .spy-main-chat .chat-message.other {
+    justify-content: flex-start;
+}
+
+.spy-game-shell .spy-main-chat .message-bubble {
+    max-width: 82%;
+    padding: 9px 12px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.07);
+    word-break: break-word;
+}
+
+.spy-game-shell .spy-main-chat .chat-message.mine .message-bubble {
+    background: rgba(120,80,255,.25);
+    border-bottom-right-radius: 5px;
+}
+
+.spy-game-shell .spy-main-chat .chat-message.other .message-bubble {
+    border-bottom-left-radius: 5px;
+}
+
+.spy-game-shell .spy-main-chat .message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.spy-game-shell .spy-main-chat .message-time {
+    font-size: 9px;
+    font-weight: 500;
+    opacity: .7;
+}
+
+.spy-game-shell .chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.spy-game-shell .chat-input-row input {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    outline: none;
+    background: rgba(255,255,255,.055);
+    color: inherit;
+}
+
+.spy-game-shell .chat-input-row button {
+    min-width: 72px;
+    height: 46px;
+    border: 0;
+    border-radius: 14px;
+    cursor: pointer;
+    font-weight: 800;
+    color: white;
+    background: linear-gradient(135deg,#7c4dff,#5e35b1);
+}
+
+.spy-game-shell .chat-input-row button:active {
+    transform: scale(.97);
+}
+
+@media (max-width: 480px) {
+    .spy-game-shell .spy-main-chat {
+        height: 260px;
+    }
+
+    .spy-game-shell .spy-main-chat .message-bubble {
+        max-width: 88%;
+    }
+}
+
+/* ============================================================
+   NEW SPY UI
+   ============================================================ */
+
+.new-spy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.new-spy-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 20px;
+    background: linear-gradient(
+        135deg,
+        rgba(124,77,255,.20),
+        rgba(255,255,255,.04)
+    );
+}
+
+.new-spy-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: rgba(124,77,255,.18);
+    font-size: 27px;
+}
+
+.new-spy-head h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.new-spy-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.new-spy-timer-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+}
+
+.new-spy-timer-box span {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.new-spy-timer-box strong {
+    font-size: 25px;
+    letter-spacing: 1px;
+}
+
+.new-spy-card {
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+}
+
+.spy-role-danger,
+.spy-role-citizen,
+.spy-result,
+.spy-voted {
+    text-align: center;
+    padding: 12px;
+}
+
+.spy-role-danger h3,
+.spy-role-citizen h3 {
+    margin: 7px 0;
+}
+
+.spy-role-danger {
+    color: #ff8a8a;
+}
+
+.spy-role-citizen strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 25px;
+}
+
+.new-spy-player-list,
+.new-spy-vote-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.new-spy-player {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border-radius: 13px;
+    background: rgba(255,255,255,.04);
+}
+
+.new-spy-vote {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-radius: 14px;
+    color: inherit;
+    background: rgba(255,255,255,.07);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.new-spy-vote:active {
+    transform: scale(.98);
+}
+
+.spy-vote-hint {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.new-spy-chat {
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.08);
+}
+
+.new-spy-chat-title {
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.new-spy-messages {
+    height: 270px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 15px;
+    background: rgba(0,0,0,.18);
+}
+
+.new-spy-chat-input {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.new-spy-chat-input input {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,.055);
+    color: inherit;
+    padding: 0 13px;
+    outline: none;
+}
+
+.new-spy-chat-input button {
+    min-width: 70px;
+    height: 46px;
+    border: 0;
+    border-radius: 14px;
+    color: white;
+    background: linear-gradient(
+        135deg,
+        #7c4dff,
+        #5e35b1
+    );
+    font-weight: 800;
+}
+
+@media (max-width: 480px) {
+
+    .new-spy-timer-box strong {
+        font-size: 22px;
+    }
+
+    .new-spy-messages {
+        height: 240px;
+    }
+
+}

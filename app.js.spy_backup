@@ -2155,14 +2155,119 @@
 
 
     function openSpyLobby() {
-    if (!state.currentUser?.username) {
-        toast("ابتدا وارد حساب کاربری شو.");
-        return;
+
+        if (!state.currentUser?.username) {
+            toast("ابتدا وارد حساب کاربری شو.");
+            return;
+        }
+
+        state.currentGame = {
+            type: "spy-lobby",
+            data: null
+        };
+
+        const content = $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        content.innerHTML = "";
+
+        const header = document.createElement("div");
+
+        header.style.textAlign = "center";
+        header.style.padding = "25px 10px 15px";
+
+        const icon = document.createElement("div");
+
+        icon.style.fontSize = "54px";
+        icon.textContent = "🕵️";
+
+        const title = document.createElement("h2");
+
+        title.textContent = "لابی جاسوس";
+        title.style.marginTop = "12px";
+
+        const description = document.createElement("p");
+
+        description.textContent =
+            "بازیکنان وارد می‌شوند؛ مدیر زمان شروع بازی را تعیین می‌کند.";
+
+        description.style.marginTop = "8px";
+        description.style.color = "var(--muted)";
+        description.style.fontSize = "12px";
+
+        header.appendChild(icon);
+        header.appendChild(title);
+        header.appendChild(description);
+
+        content.appendChild(header);
+
+        const lobby = document.createElement("div");
+
+        lobby.id = "spyLobbyContent";
+
+        lobby.innerHTML = `
+            <div style="
+                text-align:center;
+                padding:20px;
+                border-radius:18px;
+                background:rgba(255,255,255,.04);
+                border:1px solid rgba(255,255,255,.08);
+            ">
+
+                <div style="
+                    font-size:28px;
+                    font-weight:800;
+                    margin-bottom:8px;
+                " id="spyLobbyCount">
+                    0 / 5
+                </div>
+
+                <div style="
+                    color:var(--muted);
+                    font-size:13px;
+                    margin-bottom:20px;
+                ">
+                    بازیکنان حاضر در لابی
+                </div>
+
+                <div id="spyLobbyPlayers"
+                     style="
+                        display:flex;
+                        flex-direction:column;
+                        gap:10px;
+                     ">
+                </div>
+
+                <div id="spyLobbyStartArea"
+                     style="margin-top:20px;">
+                </div>
+
+            </div>
+        `;
+
+        content.appendChild(lobby);
+
+        show($("#gameModal"));
+
+        if (state.socket?.connected) {
+
+            state.socket.emit(
+                "spy_lobby_join",
+                {
+                    username: state.currentUser.username
+                }
+            );
+
+        } else {
+
+            toast("اتصال به سرور برقرار نیست.");
+
+        }
     }
 
-    const gameId = "spy-main-room";
-    NewSpyUI.open(gameId);
-}
 
 function openGame(gameType, serverData = null) {
     const game = CONFIG.GAMES[gameType];
@@ -3619,614 +3724,3 @@ function getGameDescription(gameType) {
     }
 
 })();
-
-/* ============================================================
-   NEW SPY GAME UI
-   ============================================================ */
-
-const NewSpyUI = {
-    gameId: null,
-    timer: null,
-    state: null,
-
-    open(gameId) {
-        this.gameId = gameId;
-
-        const content = document.querySelector("#gameContent");
-        if (!content) {
-            alert("محیط بازی پیدا نشد.");
-            return;
-        }
-
-        content.innerHTML = `
-            <div class="new-spy">
-                <div class="new-spy-head">
-                    <div class="new-spy-icon">🕵️</div>
-                    <div>
-                        <h2>جاسوس</h2>
-                        <p>ببین کی دروغ میگه...</p>
-                    </div>
-                </div>
-
-                <div class="new-spy-timer-box">
-                    <span id="newSpyPhase">منتظر شروع بازی</span>
-                    <strong id="newSpyTimer">--:--</strong>
-                </div>
-
-                <div id="newSpyAdmin" class="new-spy-card"></div>
-                <div id="newSpyRole" class="new-spy-card"></div>
-                <div id="newSpyPlayers" class="new-spy-card"></div>
-                <div id="newSpyVoting" class="new-spy-card"></div>
-                <div id="newSpyResult" class="new-spy-card"></div>
-
-                <div class="new-spy-chat">
-                    <div class="new-spy-chat-title">💬 چت بازی</div>
-
-                    <div id="newSpyMessages" class="new-spy-messages"></div>
-
-                    <div class="new-spy-chat-input">
-                        <input
-                            id="newSpyInput"
-                            type="text"
-                            maxlength="500"
-                            placeholder="پیامت رو بنویس..."
-                            autocomplete="off"
-                        >
-                        <button id="newSpySend" type="button">ارسال</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const input = document.querySelector("#newSpyInput");
-        const send = document.querySelector("#newSpySend");
-
-        if (send) {
-            send.onclick = () => this.sendChat();
-        }
-
-        if (input) {
-            input.onkeydown = event => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    this.sendChat();
-                }
-            };
-        }
-
-        if (!window.socket?.connected) {
-            toast("اتصال به سرور برقرار نیست.");
-            return;
-        }
-
-        const username = state.currentUser.username;
-
-        if (username === "mehdi") {
-            window.socket.emit("new_spy_create", {
-                username,
-                game_id: gameId
-            });
-        } else {
-            window.socket.emit("new_spy_join", {
-                username,
-                game_id: gameId
-            });
-        }
-    },
-
-    joinAfterCreate() {
-        if (!window.socket?.connected) return;
-
-        window.socket.emit("new_spy_join", {
-            username: state.currentUser.username,
-            game_id: this.gameId
-        });
-    },
-
-    render(data) {
-        if (!data) return;
-
-        this.state = data;
-
-        const phase = document.querySelector("#newSpyPhase");
-        const timer = document.querySelector("#newSpyTimer");
-        const role = document.querySelector("#newSpyRole");
-        const players = document.querySelector("#newSpyPlayers");
-        const voting = document.querySelector("#newSpyVoting");
-        const result = document.querySelector("#newSpyResult");
-        const admin = document.querySelector("#newSpyAdmin");
-
-        if (!phase || !timer) return;
-
-        if (data.phase === "lobby") {
-            phase.textContent = "⏳ منتظر شروع بازی";
-        } else if (data.phase === "discussion") {
-            phase.textContent = "🗣️ مرحله بحث";
-        } else if (data.phase === "voting") {
-            phase.textContent = "🗳️ رأی‌گیری";
-        } else if (data.phase === "finished") {
-            phase.textContent = "🏆 بازی تمام شد";
-        }
-
-        this.updateTimer(data.remaining_seconds || 0);
-
-        if (admin) {
-            if (
-                state.currentUser?.username === "mehdi" &&
-                data.phase === "lobby"
-            ) {
-                admin.innerHTML = `
-                    <h3>👑 کنترل مدیر</h3>
-
-                    <label class="spy-time-label">
-                        زمان بحث
-                    </label>
-
-                    <div class="spy-time-row">
-                        <input
-                            id="newSpyDiscussion"
-                            type="number"
-                            min="10"
-                            max="1800"
-                            value="120"
-                        >
-                        <span>ثانیه</span>
-                    </div>
-
-                    <button
-                        id="newSpyStart"
-                        type="button"
-                        class="spy-start-button"
-                    >
-                        🚀 شروع بازی
-                    </button>
-
-                    <small>
-                        حداقل ۱۰ ثانیه و حداکثر ۳۰ دقیقه
-                    </small>
-                `;
-
-                const startButton =
-                    document.querySelector("#newSpyStart");
-
-                if (startButton) {
-                    startButton.onclick = () => {
-                        const input =
-                            document.querySelector("#newSpyDiscussion");
-
-                        let seconds =
-                            Number(input?.value || 120);
-
-                        seconds = Math.max(
-                            10,
-                            Math.min(1800, Math.floor(seconds))
-                        );
-
-                        window.socket.emit(
-                            "new_spy_start",
-                            {
-                                username:
-                                    state.currentUser.username,
-                                game_id: this.gameId,
-                                discussion_seconds: seconds
-                            }
-                        );
-                    };
-                }
-            } else {
-                admin.innerHTML = "";
-            }
-        }
-
-        if (role) {
-            if (data.my_role === "spy") {
-                role.innerHTML = `
-                    <div class="spy-role-danger">
-                        <div>🕵️</div>
-                        <h3>شما جاسوس هستید</h3>
-                        <p>
-                            کلمه مخفی را نمی‌دانید.
-                            با سؤال و جواب خودتان را لو ندهید.
-                        </p>
-                    </div>
-                `;
-            } else if (data.my_role === "citizen") {
-                role.innerHTML = `
-                    <div class="spy-role-citizen">
-                        <div>🔐</div>
-                        <h3>شهروند</h3>
-                        <p>کلمه مخفی:</p>
-                        <strong>
-                            ${escapeHtml(data.secret_word || "")}
-                        </strong>
-                    </div>
-                `;
-            }
-        }
-
-        if (players) {
-            players.innerHTML = `
-                <h3>👥 بازیکنان (${(data.players || []).length}/5)</h3>
-
-                <div class="new-spy-player-list">
-                    ${(data.players || []).map(player => `
-                        <div class="new-spy-player">
-                            <span>
-                                🎮
-                                ${escapeHtml(player.username)}
-                                ${player.username === data.host ? " 👑" : ""}
-                            </span>
-
-                            <span>
-                                ${player.connected ? "🟢" : "🔴"}
-                            </span>
-                        </div>
-                    `).join("")}
-                </div>
-
-                ${
-                    data.phase === "lobby" &&
-                    (data.players || []).length < 3
-                    ? `<p class="spy-waiting">
-                        حداقل ۳ بازیکن برای شروع لازم است.
-                       </p>`
-                    : ""
-                }
-            `;
-        }
-
-        if (data.phase === "voting" && voting) {
-            this.renderVoting(voting, data);
-        } else if (voting) {
-            voting.innerHTML = "";
-        }
-
-        if (data.phase === "finished" && result && data.result) {
-            result.innerHTML = `
-                <div class="spy-result">
-                    <h3>🏆 نتیجه بازی</h3>
-
-                    <p>
-                        جاسوس:
-                        <strong>
-                            ${escapeHtml(data.result.spy || "")}
-                        </strong>
-                    </p>
-
-                    <p>
-                        بازیکن حذف‌شده:
-                        <strong>
-                            ${
-                                data.result.eliminated
-                                ? escapeHtml(data.result.eliminated)
-                                : "هیچ‌کس"
-                            }
-                        </strong>
-                    </p>
-
-                    <p>
-                        برنده:
-                        <strong>
-                            ${
-                                data.result.winner === "citizens"
-                                ? "👥 شهروندها"
-                                : "🕵️ جاسوس"
-                            }
-                        </strong>
-                    </p>
-                </div>
-            `;
-        } else if (result) {
-            result.innerHTML = "";
-        }
-    },
-
-    renderVoting(container, data) {
-        const username = state.currentUser.username;
-
-        const me = (data.players || []).find(
-            player => player.username === username
-        );
-
-        if (me?.voted) {
-            container.innerHTML = `
-                <div class="spy-voted">
-                    ✅ رأی شما ثبت شد
-                    <br>
-                    <small>
-                        منتظر پایان رأی‌گیری باشید...
-                    </small>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = `
-            <h3>🗳️ رأی‌گیری</h3>
-
-            <p class="spy-vote-hint">
-                رأی شما تا پایان زمان رأی‌گیری مخفی می‌ماند.
-            </p>
-
-            <div class="new-spy-vote-list">
-                ${(data.players || [])
-                    .filter(player => player.username !== username)
-                    .map(player => `
-                        <button
-                            type="button"
-                            class="new-spy-vote"
-                            data-target="${escapeHtml(player.username)}"
-                        >
-                            🎮
-                            ${escapeHtml(player.username)}
-                        </button>
-                    `)
-                    .join("")}
-            </div>
-        `;
-
-        container
-            .querySelectorAll(".new-spy-vote")
-            .forEach(button => {
-                button.onclick = () => {
-                    const target = button.dataset.target;
-
-                    window.socket.emit("new_spy_vote", {
-                        username,
-                        game_id: this.gameId,
-                        target
-                    });
-                };
-            });
-    },
-
-    sendChat() {
-        const input = document.querySelector("#newSpyInput");
-
-        if (!input) return;
-
-        const message = input.value.trim();
-
-        if (!message) return;
-
-        if (!window.socket?.connected) {
-            toast("اتصال به سرور برقرار نیست.");
-            return;
-        }
-
-        window.socket.emit("new_spy_chat", {
-            username: state.currentUser.username,
-            message,
-            game_id: this.gameId
-        });
-
-        input.value = "";
-        input.focus();
-    },
-
-    renderChatHistory(messages) {
-        const box =
-            document.querySelector("#newSpyMessages");
-
-        if (!box) return;
-
-        box.innerHTML = "";
-
-        (messages || []).forEach(message => {
-            this.addChatMessage(message, false);
-        });
-
-        box.scrollTop = box.scrollHeight;
-    },
-
-    addChatMessage(data, scroll = true) {
-        const box =
-            document.querySelector("#newSpyMessages");
-
-        if (!box) return;
-
-        const item = document.createElement("div");
-        item.className = "new-spy-chat-message";
-
-        const date = data.created_at
-            ? new Date(data.created_at)
-            : new Date();
-
-        const time =
-            date.toLocaleTimeString("fa-IR", {
-                hour: "2-digit",
-                minute: "2-digit"
-            });
-
-        item.innerHTML = `
-            <div class="chat-message-head">
-                <strong>
-                    ${escapeHtml(data.username || "کاربر")}
-                </strong>
-
-                <small>${time}</small>
-            </div>
-
-            <div class="chat-message-body">
-                ${escapeHtml(data.message || "")}
-            </div>
-        `;
-
-        box.appendChild(item);
-
-        if (scroll) {
-            box.scrollTop = box.scrollHeight;
-        }
-    },
-
-    updateTimer(seconds) {
-        const timer =
-            document.querySelector("#newSpyTimer");
-
-        if (!timer) return;
-
-        seconds = Math.max(
-            0,
-            Number(seconds) || 0
-        );
-
-        const minutes =
-            Math.floor(seconds / 60);
-
-        const secs =
-            seconds % 60;
-
-        timer.textContent =
-            `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-    }
-};
-
-if (typeof socket !== "undefined") {
-    socket.on("new_spy_created", data => {
-        if (!data?.game_id) return;
-
-        NewSpyUI.gameId = data.game_id;
-
-        NewSpyUI.render(data.state);
-
-        NewSpyUI.joinAfterCreate();
-    });
-
-    socket.on("new_spy_joined", data => {
-        NewSpyUI.render(data?.state);
-
-        if (NewSpyUI.gameId) {
-            socket.emit("new_spy_chat_history", {
-                username: state.currentUser.username,
-                game_id: NewSpyUI.gameId
-            });
-
-            socket.emit("new_spy_state", {
-                username: state.currentUser.username,
-                game_id: NewSpyUI.gameId
-            });
-        }
-    });
-
-    socket.on("new_spy_state", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_started", data => {
-        NewSpyUI.render(data?.state);
-
-        socket.emit("new_spy_state", {
-            username: state.currentUser.username,
-            game_id: NewSpyUI.gameId
-        });
-    });
-
-    socket.on("new_spy_tick", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_vote_state", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_finished", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_chat_history", data => {
-        NewSpyUI.renderChatHistory(
-            data?.messages || []
-        );
-    });
-
-    socket.on("new_spy_chat_message", data => {
-        if (
-            data?.game_id &&
-            data.game_id === NewSpyUI.gameId
-        ) {
-            NewSpyUI.addChatMessage(data);
-        }
-    });
-
-    socket.on("new_spy_error", data => {
-        toast(
-            data?.error ||
-            "خطایی در بازی جاسوس رخ داد."
-        );
-    });
-}
-
-
-
-    socket.on(
-        "new_spy_joined",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_state",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_started",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-
-            socket.emit(
-                "new_spy_timer_start",
-                {
-                    game_id:
-                        NewSpyUI.gameId
-                }
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_tick",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_vote_state",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_finished",
-        data => {
-            NewSpyUI.render(
-                data?.state
-            );
-        }
-    );
-
-    socket.on(
-        "new_spy_error",
-        data => {
-            toast(
-                data?.error ||
-                "خطایی در بازی جاسوس رخ داد."
-            );
-        }
-    );
-}

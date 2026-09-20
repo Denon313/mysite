@@ -2686,6 +2686,12 @@ if __name__ == "__main__":
     )
     print("=" * 50)
 
+    socketio.run(
+        app,
+        host=HOST,
+        port=PORT,
+        allow_unsafe_werkzeug=True
+    )
 
 # ============================================================
 # NEW SPY GAME ENGINE
@@ -2704,82 +2710,12 @@ from spy_game import (
 )
 
 NEW_SPY_GAMES = {}
-NEW_SPY_TIMER_RUNNING = set()
 
 
 def new_spy_game(game_id, host):
     game = new_spy_create_game(game_id, host)
     NEW_SPY_GAMES[game_id] = game
     return game
-
-
-
-@socketio.on("new_spy_chat")
-def new_spy_chat(data=None):
-    data = data or {}
-
-    username = str(data.get("username", "")).strip()
-    game_id = str(data.get("game_id", "")).strip()
-    message = str(data.get("message", "")).strip()
-
-    if not username or not game_id or not message:
-        emit("new_spy_error", {"error": "پیام نامعتبر است."})
-        return
-
-    game = new_spy_get_game(game_id)
-
-    if not game or username not in game.players:
-        emit("new_spy_error", {"error": "شما عضو این بازی نیستید."})
-        return
-
-    if len(message) > 500:
-        emit("new_spy_error", {"error": "پیام خیلی طولانی است."})
-        return
-
-    try:
-        save_chat_message(username, message, False, game_id)
-    except Exception:
-        pass
-
-    payload = {
-        "username": username,
-        "message": message,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "game_id": game_id,
-    }
-
-    socketio.emit(
-        "new_spy_chat_message",
-        payload,
-        room=f"new_spy_{game_id}"
-    )
-
-
-@socketio.on("new_spy_chat_history")
-def new_spy_chat_history(data=None):
-    data = data or {}
-
-    username = str(data.get("username", "")).strip()
-    game_id = str(data.get("game_id", "")).strip()
-
-    game = new_spy_get_game(game_id)
-
-    if not game or username not in game.players:
-        emit("new_spy_error", {"error": "شما عضو این بازی نیستید."})
-        return
-
-    try:
-        messages = get_chat_history(game_id)
-    except Exception:
-        messages = []
-
-    emit(
-        "new_spy_chat_history",
-        {
-            "messages": messages,
-            "game_id": game_id,
-        }
-    )
 
 
 @socketio.on("new_spy_create")
@@ -3038,12 +2974,9 @@ def new_spy_timer_worker(game_id):
                 },
                 room=f"new_spy_{game_id}"
             )
-            NEW_SPY_TIMER_RUNNING.discard(game_id)
             break
 
         socketio.sleep(1)
-
-    NEW_SPY_TIMER_RUNNING.discard(game_id)
 
 
 @socketio.on("new_spy_timer_start")
@@ -3058,11 +2991,6 @@ def new_spy_timer_start(data=None):
 
     if not game:
         return
-
-    if game_id in NEW_SPY_TIMER_RUNNING:
-        return
-
-    NEW_SPY_TIMER_RUNNING.add(game_id)
 
     socketio.start_background_task(
         new_spy_timer_worker,
@@ -3094,11 +3022,3 @@ def new_spy_finish(data=None):
         },
         room=f"new_spy_{game_id}"
     )
-
-
-socketio.run(
-    app,
-    host=HOST,
-    port=PORT,
-    allow_unsafe_werkzeug=True
-)

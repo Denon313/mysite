@@ -3633,6 +3633,7 @@ const NewSpyUI = {
         this.gameId = gameId;
 
         const content = document.querySelector("#gameContent");
+
         if (!content) {
             alert("محیط بازی پیدا نشد.");
             return;
@@ -3640,8 +3641,10 @@ const NewSpyUI = {
 
         content.innerHTML = `
             <div class="new-spy">
+
                 <div class="new-spy-head">
                     <div class="new-spy-icon">🕵️</div>
+
                     <div>
                         <h2>جاسوس</h2>
                         <p>ببین کی دروغ میگه...</p>
@@ -3649,20 +3652,45 @@ const NewSpyUI = {
                 </div>
 
                 <div class="new-spy-timer-box">
-                    <span id="newSpyPhase">منتظر شروع بازی</span>
-                    <strong id="newSpyTimer">--:--</strong>
+                    <span id="newSpyPhase">
+                        منتظر شروع بازی
+                    </span>
+
+                    <strong id="newSpyTimer">
+                        --:--
+                    </strong>
                 </div>
 
-                <div id="newSpyAdmin" class="new-spy-card"></div>
-                <div id="newSpyRole" class="new-spy-card"></div>
-                <div id="newSpyPlayers" class="new-spy-card"></div>
-                <div id="newSpyVoting" class="new-spy-card"></div>
-                <div id="newSpyResult" class="new-spy-card"></div>
+                <div
+                    id="newSpyRole"
+                    class="new-spy-card"
+                ></div>
+
+                <div
+                    id="newSpyPlayers"
+                    class="new-spy-card"
+                ></div>
+
+                <div
+                    id="newSpyVoting"
+                    class="new-spy-card"
+                ></div>
+
+                <div
+                    id="newSpyResult"
+                    class="new-spy-card"
+                ></div>
 
                 <div class="new-spy-chat">
-                    <div class="new-spy-chat-title">💬 چت بازی</div>
 
-                    <div id="newSpyMessages" class="new-spy-messages"></div>
+                    <div class="new-spy-chat-title">
+                        💬 چت بازی
+                    </div>
+
+                    <div
+                        id="newSpyMessages"
+                        class="new-spy-messages"
+                    ></div>
 
                     <div class="new-spy-chat-input">
                         <input
@@ -3672,21 +3700,34 @@ const NewSpyUI = {
                             placeholder="پیامت رو بنویس..."
                             autocomplete="off"
                         >
-                        <button id="newSpySend" type="button">ارسال</button>
+
+                        <button
+                            id="newSpySend"
+                            type="button"
+                        >
+                            ارسال
+                        </button>
                     </div>
+
                 </div>
+
             </div>
         `;
 
-        const input = document.querySelector("#newSpyInput");
-        const send = document.querySelector("#newSpySend");
+        const input =
+            document.querySelector("#newSpyInput");
+
+        const send =
+            document.querySelector("#newSpySend");
 
         if (send) {
-            send.onclick = () => this.sendChat();
+            send.onclick = () => {
+                this.sendChat();
+            };
         }
 
         if (input) {
-            input.onkeydown = event => {
+            input.onkeydown = (event) => {
                 if (event.key === "Enter") {
                     event.preventDefault();
                     this.sendChat();
@@ -3694,33 +3735,51 @@ const NewSpyUI = {
             };
         }
 
+        if (window.socket?.connected) {
+            window.socket.emit(
+                "new_spy_join",
+                {
+                    username:
+                        state.currentUser.username,
+
+                    game_id:
+                        gameId
+                }
+            );
+        }
+    },
+
+    sendChat() {
+        const input =
+            document.querySelector("#newSpyInput");
+
+        if (!input) return;
+
+        const message =
+            input.value.trim();
+
+        if (!message) return;
+
         if (!window.socket?.connected) {
             toast("اتصال به سرور برقرار نیست.");
             return;
         }
 
-        const username = state.currentUser.username;
+        window.socket.emit(
+            "game_chat",
+            {
+                username:
+                    state.currentUser.username,
 
-        if (username === "mehdi") {
-            window.socket.emit("new_spy_create", {
-                username,
-                game_id: gameId
-            });
-        } else {
-            window.socket.emit("new_spy_join", {
-                username,
-                game_id: gameId
-            });
-        }
-    },
+                message,
 
-    joinAfterCreate() {
-        if (!window.socket?.connected) return;
+                game_id:
+                    this.gameId
+            }
+        );
 
-        window.socket.emit("new_spy_join", {
-            username: state.currentUser.username,
-            game_id: this.gameId
-        });
+        input.value = "";
+        input.focus();
     },
 
     render(data) {
@@ -3728,95 +3787,46 @@ const NewSpyUI = {
 
         this.state = data;
 
-        const phase = document.querySelector("#newSpyPhase");
-        const timer = document.querySelector("#newSpyTimer");
-        const role = document.querySelector("#newSpyRole");
-        const players = document.querySelector("#newSpyPlayers");
-        const voting = document.querySelector("#newSpyVoting");
-        const result = document.querySelector("#newSpyResult");
-        const admin = document.querySelector("#newSpyAdmin");
+        const phase =
+            document.querySelector("#newSpyPhase");
+
+        const timer =
+            document.querySelector("#newSpyTimer");
+
+        const role =
+            document.querySelector("#newSpyRole");
+
+        const players =
+            document.querySelector("#newSpyPlayers");
+
+        const voting =
+            document.querySelector("#newSpyVoting");
+
+        const result =
+            document.querySelector("#newSpyResult");
 
         if (!phase || !timer) return;
 
         if (data.phase === "lobby") {
-            phase.textContent = "⏳ منتظر شروع بازی";
+            phase.textContent =
+                "منتظر شروع بازی";
+
         } else if (data.phase === "discussion") {
-            phase.textContent = "🗣️ مرحله بحث";
+            phase.textContent =
+                "🗣️ مرحله بحث";
+
         } else if (data.phase === "voting") {
-            phase.textContent = "🗳️ رأی‌گیری";
+            phase.textContent =
+                "🗳️ رأی‌گیری";
+
         } else if (data.phase === "finished") {
-            phase.textContent = "🏆 بازی تمام شد";
+            phase.textContent =
+                "🏆 بازی تمام شد";
         }
 
-        this.updateTimer(data.remaining_seconds || 0);
-
-        if (admin) {
-            if (
-                state.currentUser?.username === "mehdi" &&
-                data.phase === "lobby"
-            ) {
-                admin.innerHTML = `
-                    <h3>👑 کنترل مدیر</h3>
-
-                    <label class="spy-time-label">
-                        زمان بحث
-                    </label>
-
-                    <div class="spy-time-row">
-                        <input
-                            id="newSpyDiscussion"
-                            type="number"
-                            min="10"
-                            max="1800"
-                            value="120"
-                        >
-                        <span>ثانیه</span>
-                    </div>
-
-                    <button
-                        id="newSpyStart"
-                        type="button"
-                        class="spy-start-button"
-                    >
-                        🚀 شروع بازی
-                    </button>
-
-                    <small>
-                        حداقل ۱۰ ثانیه و حداکثر ۳۰ دقیقه
-                    </small>
-                `;
-
-                const startButton =
-                    document.querySelector("#newSpyStart");
-
-                if (startButton) {
-                    startButton.onclick = () => {
-                        const input =
-                            document.querySelector("#newSpyDiscussion");
-
-                        let seconds =
-                            Number(input?.value || 120);
-
-                        seconds = Math.max(
-                            10,
-                            Math.min(1800, Math.floor(seconds))
-                        );
-
-                        window.socket.emit(
-                            "new_spy_start",
-                            {
-                                username:
-                                    state.currentUser.username,
-                                game_id: this.gameId,
-                                discussion_seconds: seconds
-                            }
-                        );
-                    };
-                }
-            } else {
-                admin.innerHTML = "";
-            }
-        }
+        this.updateTimer(
+            data.remaining_seconds || 0
+        );
 
         if (role) {
             if (data.my_role === "spy") {
@@ -3830,58 +3840,78 @@ const NewSpyUI = {
                         </p>
                     </div>
                 `;
-            } else if (data.my_role === "citizen") {
+            } else if (
+                data.my_role === "citizen"
+            ) {
                 role.innerHTML = `
                     <div class="spy-role-citizen">
                         <div>🔐</div>
                         <h3>شهروند</h3>
                         <p>کلمه مخفی:</p>
                         <strong>
-                            ${escapeHtml(data.secret_word || "")}
+                            ${escapeHtml(
+                                data.secret_word || ""
+                            )}
                         </strong>
                     </div>
                 `;
+            } else {
+                role.innerHTML = "";
             }
         }
 
         if (players) {
             players.innerHTML = `
-                <h3>👥 بازیکنان (${(data.players || []).length}/5)</h3>
+                <h3>👥 بازیکنان</h3>
 
                 <div class="new-spy-player-list">
-                    ${(data.players || []).map(player => `
-                        <div class="new-spy-player">
-                            <span>
-                                🎮
-                                ${escapeHtml(player.username)}
-                                ${player.username === data.host ? " 👑" : ""}
-                            </span>
 
-                            <span>
-                                ${player.connected ? "🟢" : "🔴"}
-                            </span>
-                        </div>
-                    `).join("")}
+                    ${
+                        (data.players || [])
+                            .map(player => `
+                                <div
+                                    class="new-spy-player"
+                                >
+                                    <span>
+                                        🎮
+                                        ${escapeHtml(
+                                            player.username
+                                        )}
+                                    </span>
+
+                                    <span>
+                                        ${
+                                            player.connected
+                                                ? "🟢"
+                                                : "🔴"
+                                        }
+                                    </span>
+                                </div>
+                            `)
+                            .join("")
+                    }
+
                 </div>
-
-                ${
-                    data.phase === "lobby" &&
-                    (data.players || []).length < 3
-                    ? `<p class="spy-waiting">
-                        حداقل ۳ بازیکن برای شروع لازم است.
-                       </p>`
-                    : ""
-                }
             `;
         }
 
-        if (data.phase === "voting" && voting) {
-            this.renderVoting(voting, data);
+        if (
+            data.phase === "voting" &&
+            voting
+        ) {
+            this.renderVoting(
+                voting,
+                data
+            );
         } else if (voting) {
             voting.innerHTML = "";
         }
 
-        if (data.phase === "finished" && result && data.result) {
+        if (
+            data.phase === "finished" &&
+            result &&
+            data.result
+        ) {
             result.innerHTML = `
                 <div class="spy-result">
                     <h3>🏆 نتیجه بازی</h3>
@@ -3889,7 +3919,9 @@ const NewSpyUI = {
                     <p>
                         جاسوس:
                         <strong>
-                            ${escapeHtml(data.result.spy || "")}
+                            ${escapeHtml(
+                                data.result.spy || ""
+                            )}
                         </strong>
                     </p>
 
@@ -3898,8 +3930,10 @@ const NewSpyUI = {
                         <strong>
                             ${
                                 data.result.eliminated
-                                ? escapeHtml(data.result.eliminated)
-                                : "هیچ‌کس"
+                                    ? escapeHtml(
+                                        data.result.eliminated
+                                    )
+                                    : "هیچ‌کس"
                             }
                         </strong>
                     </p>
@@ -3909,26 +3943,18 @@ const NewSpyUI = {
                         <strong>
                             ${
                                 data.result.winner === "citizens"
-                                ? "👥 شهروندها"
-                                : "🕵️ جاسوس"
+                                    ? "👥 شهروندها"
+                                    : "🕵️ جاسوس"
                             }
                         </strong>
                     </p>
                 </div>
             `;
-        } else if (result) {
-            result.innerHTML = "";
         }
     },
 
     renderVoting(container, data) {
-        const username = state.currentUser.username;
-
-        const me = (data.players || []).find(
-            player => player.username === username
-        );
-
-        if (me?.voted) {
+        if (data.voted) {
             container.innerHTML = `
                 <div class="spy-voted">
                     ✅ رأی شما ثبت شد
@@ -3941,6 +3967,9 @@ const NewSpyUI = {
             return;
         }
 
+        const username =
+            state.currentUser.username;
+
         container.innerHTML = `
             <h3>🗳️ رأی‌گیری</h3>
 
@@ -3949,119 +3978,63 @@ const NewSpyUI = {
             </p>
 
             <div class="new-spy-vote-list">
-                ${(data.players || [])
-                    .filter(player => player.username !== username)
-                    .map(player => `
-                        <button
-                            type="button"
-                            class="new-spy-vote"
-                            data-target="${escapeHtml(player.username)}"
-                        >
-                            🎮
-                            ${escapeHtml(player.username)}
-                        </button>
-                    `)
-                    .join("")}
+
+                ${
+                    (data.players || [])
+                        .filter(
+                            p =>
+                                p.username !== username
+                        )
+                        .map(player => `
+                            <button
+                                type="button"
+                                class="new-spy-vote"
+                                data-target="${escapeHtml(
+                                    player.username
+                                )}"
+                            >
+                                🎮
+                                ${escapeHtml(
+                                    player.username
+                                )}
+                            </button>
+                        `)
+                        .join("")
+                }
+
             </div>
         `;
 
         container
-            .querySelectorAll(".new-spy-vote")
+            .querySelectorAll(
+                ".new-spy-vote"
+            )
             .forEach(button => {
                 button.onclick = () => {
-                    const target = button.dataset.target;
+                    const target =
+                        button.dataset.target;
 
-                    window.socket.emit("new_spy_vote", {
-                        username,
-                        game_id: this.gameId,
-                        target
-                    });
+                    window.socket.emit(
+                        "new_spy_vote",
+                        {
+                            username:
+                                state.currentUser.username,
+
+                            game_id:
+                                this.gameId,
+
+                            target
+                        }
+                    );
                 };
             });
     },
 
-    sendChat() {
-        const input = document.querySelector("#newSpyInput");
-
-        if (!input) return;
-
-        const message = input.value.trim();
-
-        if (!message) return;
-
-        if (!window.socket?.connected) {
-            toast("اتصال به سرور برقرار نیست.");
-            return;
-        }
-
-        window.socket.emit("new_spy_chat", {
-            username: state.currentUser.username,
-            message,
-            game_id: this.gameId
-        });
-
-        input.value = "";
-        input.focus();
-    },
-
-    renderChatHistory(messages) {
-        const box =
-            document.querySelector("#newSpyMessages");
-
-        if (!box) return;
-
-        box.innerHTML = "";
-
-        (messages || []).forEach(message => {
-            this.addChatMessage(message, false);
-        });
-
-        box.scrollTop = box.scrollHeight;
-    },
-
-    addChatMessage(data, scroll = true) {
-        const box =
-            document.querySelector("#newSpyMessages");
-
-        if (!box) return;
-
-        const item = document.createElement("div");
-        item.className = "new-spy-chat-message";
-
-        const date = data.created_at
-            ? new Date(data.created_at)
-            : new Date();
-
-        const time =
-            date.toLocaleTimeString("fa-IR", {
-                hour: "2-digit",
-                minute: "2-digit"
-            });
-
-        item.innerHTML = `
-            <div class="chat-message-head">
-                <strong>
-                    ${escapeHtml(data.username || "کاربر")}
-                </strong>
-
-                <small>${time}</small>
-            </div>
-
-            <div class="chat-message-body">
-                ${escapeHtml(data.message || "")}
-            </div>
-        `;
-
-        box.appendChild(item);
-
-        if (scroll) {
-            box.scrollTop = box.scrollHeight;
-        }
-    },
-
     updateTimer(seconds) {
         const timer =
-            document.querySelector("#newSpyTimer");
+            document.querySelector(
+                "#newSpyTimer"
+            );
 
         if (!timer) return;
 
@@ -4081,82 +4054,8 @@ const NewSpyUI = {
     }
 };
 
+
 if (typeof socket !== "undefined") {
-    socket.on("new_spy_created", data => {
-        if (!data?.game_id) return;
-
-        NewSpyUI.gameId = data.game_id;
-
-        NewSpyUI.render(data.state);
-
-        NewSpyUI.joinAfterCreate();
-    });
-
-    socket.on("new_spy_joined", data => {
-        NewSpyUI.render(data?.state);
-
-        if (NewSpyUI.gameId) {
-            socket.emit("new_spy_chat_history", {
-                username: state.currentUser.username,
-                game_id: NewSpyUI.gameId
-            });
-
-            socket.emit("new_spy_state", {
-                username: state.currentUser.username,
-                game_id: NewSpyUI.gameId
-            });
-        }
-    });
-
-    socket.on("new_spy_state", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_started", data => {
-        NewSpyUI.render(data?.state);
-
-        socket.emit("new_spy_state", {
-            username: state.currentUser.username,
-            game_id: NewSpyUI.gameId
-        });
-    });
-
-    socket.on("new_spy_tick", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_vote_state", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_finished", data => {
-        NewSpyUI.render(data?.state);
-    });
-
-    socket.on("new_spy_chat_history", data => {
-        NewSpyUI.renderChatHistory(
-            data?.messages || []
-        );
-    });
-
-    socket.on("new_spy_chat_message", data => {
-        if (
-            data?.game_id &&
-            data.game_id === NewSpyUI.gameId
-        ) {
-            NewSpyUI.addChatMessage(data);
-        }
-    });
-
-    socket.on("new_spy_error", data => {
-        toast(
-            data?.error ||
-            "خطایی در بازی جاسوس رخ داد."
-        );
-    });
-}
-
-
 
     socket.on(
         "new_spy_joined",
