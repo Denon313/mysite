@@ -1305,6 +1305,172 @@
             }
         });
 
+        socket.on("spy_lobby_update", (data) => {
+
+            if (!data) {
+                return;
+            }
+
+            const countElement = $("#spyLobbyCount");
+            const playersElement = $("#spyLobbyPlayers");
+            const startArea = $("#spyLobbyStartArea");
+
+            if (!countElement || !playersElement) {
+                return;
+            }
+
+            const players = Array.isArray(data.players)
+                ? data.players
+                : [];
+
+            const count = Number(data.count) || players.length;
+            const maxPlayers = Number(data.max_players) || 5;
+            const minPlayers = Number(data.min_players) || 3;
+
+            countElement.textContent =
+                `${count} / ${maxPlayers}`;
+
+            playersElement.innerHTML = "";
+
+            players.forEach((player) => {
+
+                const item = document.createElement("div");
+
+                item.style.display = "flex";
+                item.style.alignItems = "center";
+                item.style.gap = "10px";
+                item.style.padding = "12px";
+                item.style.borderRadius = "14px";
+                item.style.background =
+                    "rgba(255,255,255,.05)";
+                item.style.border =
+                    "1px solid rgba(255,255,255,.07)";
+
+                const avatar = document.createElement("div");
+
+                avatar.style.width = "38px";
+                avatar.style.height = "38px";
+                avatar.style.borderRadius = "50%";
+                avatar.style.display = "flex";
+                avatar.style.alignItems = "center";
+                avatar.style.justifyContent = "center";
+                avatar.style.background =
+                    "rgba(255,255,255,.08)";
+                avatar.style.overflow = "hidden";
+                avatar.style.flexShrink = "0";
+
+                if (player.avatar_url) {
+
+                    const image =
+                        document.createElement("img");
+
+                    image.src = player.avatar_url;
+                    image.alt = "";
+
+                    image.style.width = "100%";
+                    image.style.height = "100%";
+                    image.style.objectFit = "cover";
+
+                    avatar.appendChild(image);
+
+                } else {
+
+                    avatar.textContent =
+                        player.emoji || "🎮";
+                }
+
+                const name = document.createElement("div");
+
+                name.style.flex = "1";
+                name.style.textAlign = "right";
+
+                name.innerHTML = `
+                    <div style="
+                        font-weight:700;
+                    ">
+                        ${player.display_name || player.username}
+                    </div>
+
+                    <div style="
+                        font-size:11px;
+                        color:var(--muted);
+                        margin-top:3px;
+                    ">
+                        آماده ورود به بازی
+                    </div>
+                `;
+
+                item.appendChild(avatar);
+                item.appendChild(name);
+
+                playersElement.appendChild(item);
+            });
+
+            if (startArea) {
+
+                startArea.innerHTML = "";
+
+                if (
+                    state.currentUser?.role === "admin"
+                ) {
+
+                    const startButton =
+                        document.createElement("button");
+
+                    startButton.type = "button";
+                    startButton.textContent =
+                        count >= minPlayers
+                            ? "🚀 شروع بازی"
+                            : `🔒 شروع بازی (حداقل ${minPlayers} نفر)`;
+
+                    startButton.disabled =
+                        count < minPlayers;
+
+                    startButton.style.width = "100%";
+                    startButton.style.padding = "14px";
+                    startButton.style.border = "0";
+                    startButton.style.borderRadius = "14px";
+                    startButton.style.fontSize = "15px";
+                    startButton.style.fontWeight = "800";
+                    startButton.style.cursor =
+                        startButton.disabled
+                            ? "not-allowed"
+                            : "pointer";
+
+                    startButton.addEventListener(
+                        "click",
+                        () => {
+
+                            if (
+                                startButton.disabled
+                            ) {
+                                return;
+                            }
+
+                            startGameFromServer("spy");
+                        }
+                    );
+
+                    startArea.appendChild(startButton);
+
+                } else {
+
+                    const waiting =
+                        document.createElement("div");
+
+                    waiting.style.textAlign = "center";
+                    waiting.style.padding = "12px";
+                    waiting.style.color =
+                        "var(--muted)";
+
+                    waiting.textContent =
+                        "⏳ منتظر تصمیم مدیر برای شروع بازی...";
+
+                    startArea.appendChild(waiting);
+                }
+            }
+        });
+
         socket.on("spy_private_role", (data) => {
             if (!data) {
                 return;
@@ -1944,6 +2110,120 @@
         }
     }
 
+
+    function openSpyLobby() {
+
+        if (!state.currentUser?.username) {
+            toast("ابتدا وارد حساب کاربری شو.");
+            return;
+        }
+
+        state.currentGame = {
+            type: "spy-lobby",
+            data: null
+        };
+
+        const content = $("#gameContent");
+
+        if (!content) {
+            return;
+        }
+
+        content.innerHTML = "";
+
+        const header = document.createElement("div");
+
+        header.style.textAlign = "center";
+        header.style.padding = "25px 10px 15px";
+
+        const icon = document.createElement("div");
+
+        icon.style.fontSize = "54px";
+        icon.textContent = "🕵️";
+
+        const title = document.createElement("h2");
+
+        title.textContent = "لابی جاسوس";
+        title.style.marginTop = "12px";
+
+        const description = document.createElement("p");
+
+        description.textContent =
+            "بازیکنان وارد می‌شوند؛ مدیر زمان شروع بازی را تعیین می‌کند.";
+
+        description.style.marginTop = "8px";
+        description.style.color = "var(--muted)";
+        description.style.fontSize = "12px";
+
+        header.appendChild(icon);
+        header.appendChild(title);
+        header.appendChild(description);
+
+        content.appendChild(header);
+
+        const lobby = document.createElement("div");
+
+        lobby.id = "spyLobbyContent";
+
+        lobby.innerHTML = `
+            <div style="
+                text-align:center;
+                padding:20px;
+                border-radius:18px;
+                background:rgba(255,255,255,.04);
+                border:1px solid rgba(255,255,255,.08);
+            ">
+
+                <div style="
+                    font-size:28px;
+                    font-weight:800;
+                    margin-bottom:8px;
+                " id="spyLobbyCount">
+                    0 / 5
+                </div>
+
+                <div style="
+                    color:var(--muted);
+                    font-size:13px;
+                    margin-bottom:20px;
+                ">
+                    بازیکنان حاضر در لابی
+                </div>
+
+                <div id="spyLobbyPlayers"
+                     style="
+                        display:flex;
+                        flex-direction:column;
+                        gap:10px;
+                     ">
+                </div>
+
+                <div id="spyLobbyStartArea"
+                     style="margin-top:20px;">
+                </div>
+
+            </div>
+        `;
+
+        content.appendChild(lobby);
+
+        show($("#gameModal"));
+
+        if (state.socket?.connected) {
+
+            state.socket.emit(
+                "spy_lobby_join",
+                {
+                    username: state.currentUser.username
+                }
+            );
+
+        } else {
+
+            toast("اتصال به سرور برقرار نیست.");
+
+        }
+    }
 
     function openGame(gameType, serverData = null) {
 
@@ -2986,9 +3266,7 @@
 
                         if (game === "spy") {
 
-                            startGameFromServer(
-                                "spy"
-                            );
+                            openSpyLobby();
 
                         } else {
 

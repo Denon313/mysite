@@ -1461,10 +1461,13 @@ def start_game():
         min_players = 4
         max_players = 4
 
-    players = [
-        p["username"]
-        for p in room_players()
-    ]
+    if game_type == "spy":
+        players = list(spy_lobby_players)
+    else:
+        players = [
+            p["username"]
+            for p in room_players()
+        ]
 
     current_players = len(players)
 
@@ -1527,6 +1530,9 @@ def start_game():
         f"{game_type}"
     )
 
+    if game_type == "spy":
+        spy_lobby_players.clear()
+
     socketio.emit(
         "game_started",
         {
@@ -1571,6 +1577,11 @@ def socket_disconnect():
         return
 
     username = info["username"]
+
+    if username in spy_lobby_players:
+        spy_lobby_players.remove(username)
+
+        broadcast_spy_lobby()
 
     if username in connected_users:
 
@@ -1642,6 +1653,92 @@ def send_spy_private_role(game_id, username, sid=None):
     )
 
     return True
+
+
+# =========================
+# SPY LOBBY
+# =========================
+
+spy_lobby_players = []
+
+
+def get_spy_lobby_players():
+    return [
+        player_public(username)
+        for username in spy_lobby_players
+        if valid_username(username)
+    ]
+
+
+def broadcast_spy_lobby():
+    players = get_spy_lobby_players()
+
+    socketio.emit(
+        "spy_lobby_update",
+        {
+            "players": players,
+            "count": len(players),
+            "max_players": 5,
+            "min_players": 3,
+            "can_start": len(players) >= 3
+        },
+        room=MAIN_ROOM
+    )
+
+
+@socketio.on("spy_lobby_join")
+def spy_lobby_join(data):
+
+    data = data or {}
+
+    username = str(
+        data.get("username", "")
+    ).strip()
+
+    if not valid_username(username):
+        return
+
+    player = get_player(username)
+
+    if not player:
+        return
+
+    if player.get("blocked"):
+        return
+
+    # حداکثر ۵ نفر
+    if (
+        username not in spy_lobby_players
+        and len(spy_lobby_players) >= 5
+    ):
+        socketio.emit(
+            "spy_lobby_error",
+            {
+                "error": "لابی پر است."
+            },
+            to=request.sid
+        )
+        return
+
+    if username not in spy_lobby_players:
+        spy_lobby_players.append(username)
+
+    broadcast_spy_lobby()
+
+
+@socketio.on("spy_lobby_leave")
+def spy_lobby_leave(data):
+
+    data = data or {}
+
+    username = str(
+        data.get("username", "")
+    ).strip()
+
+    if username in spy_lobby_players:
+        spy_lobby_players.remove(username)
+
+    broadcast_spy_lobby()
 
 
 @socketio.on("spy_request_role")
