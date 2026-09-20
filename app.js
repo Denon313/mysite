@@ -1872,7 +1872,7 @@
 
             const response =
                 await fetch(
-                    `${API_BASE}/api/game/start`,
+                    `${CONFIG.API_BASE}/api/game/start`,
                     {
                         method: "POST",
 
