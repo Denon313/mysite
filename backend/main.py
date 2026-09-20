@@ -1446,7 +1446,7 @@ def start_game():
         }), 400
 
     # فقط مدیر اجازه شروع بازی را دارد
-    if username != "Mahdi":
+    if PLAYERS.get(username, {}).get("role") != "admin":
         return jsonify({
             "error": "فقط مدیر می‌تواند بازی را شروع کند."
         }), 403
