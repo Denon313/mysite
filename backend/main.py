@@ -768,10 +768,16 @@ def valid_username(username):
 
 def room_players():
 
+    connected_usernames = {
+        info.get("username")
+        for info in user_sids.values()
+        if isinstance(info, dict) and info.get("username")
+    }
+
     return [
         player_public(username)
         for username in PLAYERS
-        if username in user_sids
+        if username in connected_usernames
     ]
 
 
@@ -1424,69 +1430,57 @@ VALID_GAMES = {
 
 @app.post("/api/game/start")
 def start_game():
-
     data = json_body()
 
-    username = data.get(
-        "username",
-        ""
-    )
-
-    game_type = data.get(
-        "game_type",
-        ""
-    )
+    username = str(data.get("username", "")).strip()
+    game_type = str(data.get("game_type", "")).strip()
 
     if not valid_username(username):
-
         return jsonify({
-            "error":
-                "کاربر معتبر نیست."
+            "error": "کاربر معتبر نیست."
         }), 401
 
     if game_type not in VALID_GAMES:
-
         return jsonify({
-            "error":
-                "بازی معتبر نیست."
+            "error": "بازی معتبر نیست."
         }), 400
+
+    # فقط مدیر اجازه شروع بازی را دارد
+    if username != "Mahdi":
+        return jsonify({
+            "error": "فقط مدیر می‌تواند بازی را شروع کند."
+        }), 403
 
     if game_type == "spy":
         min_players = 3
         max_players = 5
-
     elif game_type == "mystery":
         min_players = 2
         max_players = 5
-
     else:
         min_players = 4
         max_players = 4
 
-    current_players = len(
-        room_players()
-    )
+    players = [
+        p["username"]
+        for p in room_players()
+    ]
+
+    current_players = len(players)
 
     if current_players < min_players:
-
         return jsonify({
             "error":
-                f"برای این بازی حداقل {min_players} بازیکن لازم است."
+                f"برای شروع حداقل {min_players} بازیکن لازم است."
         }), 400
 
     if current_players > max_players:
-
         return jsonify({
             "error":
                 f"حداکثر {max_players} بازیکن مجاز است."
         }), 400
 
     game_id = uuid.uuid4().hex
-
-    players = [
-        p["username"]
-        for p in room_players()
-    ]
 
     if game_type == "spy":
         active_games[game_id] = create_spy_game(
@@ -1495,9 +1489,8 @@ def start_game():
             username
         )
 
-        start_spy_server_timer(
-            game_id
-        )
+        start_spy_server_timer(game_id)
+
     else:
         active_games[game_id] = {
             "id": game_id,
@@ -1539,10 +1532,7 @@ def start_game():
         {
             "game_id": game_id,
             "game_type": game_type,
-            "players":
-                active_games[
-                    game_id
-                ]["players"]
+            "players": active_games[game_id]["players"]
         },
         room=MAIN_ROOM
     )
@@ -1550,7 +1540,8 @@ def start_game():
     return jsonify({
         "success": True,
         "game_id": game_id,
-        "game_type": game_type
+        "game_type": game_type,
+        "players": players
     })
 
 
