@@ -1286,130 +1286,96 @@
         );
 
 
-        socket.on(
-            "game_started",
-            (data) => {
-
-                if (data?.game_type) {
-
-                    openGame(
-                        data.game_type,
-                        data
-                    );
-                }
-            }
-        );
-
-
-        socket.on(
-            "spy_private_role",
-            (data) => {
-
-                if (!data) {
-                    return;
-                }
+        // SPY_AUTO_ROLE_REQUEST
+        socket.on("game_started", (data) => {
+            if (data?.game_type) {
+                openGame(data.game_type, data);
 
                 if (
-                    !state.currentGame ||
-                    state.currentGame.type !== "spy"
+                    data.game_type === "spy" &&
+                    data.game_id &&
+                    state.currentUser?.username &&
+                    state.socket?.connected
                 ) {
-                    return;
+                    state.socket.emit("spy_get_state", {
+                        game_id: data.game_id,
+                        username: state.currentUser.username
+                    });
                 }
-
-                state.currentGame.spyRole =
-                    data;
-
-                renderSpyPrivateRole(
-                    data
-                );
             }
-        );
+        });
 
-
-        socket.on(
-            "spy_game_state",
-            (data) => {
-
-                if (!data) {
-                    return;
-                }
-
-                if (
-                    !state.currentGame ||
-                    state.currentGame.type !== "spy"
-                ) {
-                    return;
-                }
-
-                state.currentGame.spyState =
-                    data;
-
-                renderSpyGameState(
-                    data
-                );
+        socket.on("spy_private_role", (data) => {
+            if (!data) {
+                return;
             }
-        );
 
-
-        socket.on(
-            "spy_voting_started",
-            (data) => {
-
-                if (!data) {
-                    return;
-                }
-
-                if (
-                    !state.currentGame ||
-                    state.currentGame.type !== "spy"
-                ) {
-                    return;
-                }
-
-                state.currentGame.spyState =
-                    data;
-
-                renderSpyVoting(
-                    data
-                );
+            if (
+                !state.currentGame ||
+                state.currentGame.type !== "spy"
+            ) {
+                return;
             }
-        );
+
+            state.currentGame.spyRole = data;
+            renderSpyPrivateRole(data);
+        });
 
 
-        socket.on(
-            "spy_game_finished",
-            (data) => {
-
-                if (!data) {
-                    return;
-                }
-
-                if (
-                    !state.currentGame ||
-                    state.currentGame.type !== "spy"
-                ) {
-                    return;
-                }
-
-                state.currentGame.spyResult =
-                    data;
-
-                renderSpyResult(
-                    data
-                );
+        socket.on("spy_game_state", (data) => {
+            if (!data) {
+                return;
             }
-        );
 
-
-        socket.on(
-            "game_state_update",
-            (data) => {
-
-                updateCurrentGame(
-                    data
-                );
+            if (
+                !state.currentGame ||
+                state.currentGame.type !== "spy"
+            ) {
+                return;
             }
-        );
+
+            state.currentGame.spyState = data;
+            renderSpyGameState(data);
+        });
+
+
+        socket.on("spy_voting_started", (data) => {
+            if (!data) {
+                return;
+            }
+
+            if (
+                !state.currentGame ||
+                state.currentGame.type !== "spy"
+            ) {
+                return;
+            }
+
+            state.currentGame.spyState = data;
+            renderSpyVoting(data);
+        });
+
+
+        socket.on("spy_game_finished", (data) => {
+            if (!data) {
+                return;
+            }
+
+            if (
+                !state.currentGame ||
+                state.currentGame.type !== "spy"
+            ) {
+                return;
+            }
+
+            state.currentGame.spyResult = data;
+            renderSpyResult(data);
+        });
+
+
+        socket.on("game_state_update", (data) => {
+            updateCurrentGame(data);
+        });
     }
 
 
@@ -1887,6 +1853,97 @@
     /* =====================================================
        GAMES
     ===================================================== */
+
+    // SPY_START_API_CONNECTED
+
+    async function startGameFromServer(gameType) {
+
+        if (!state.currentUser?.username) {
+            toast("ابتدا وارد حساب کاربری شو.");
+            return;
+        }
+
+        if (!state.socket?.connected) {
+            toast("اتصال به سرور برقرار نیست.");
+            return;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_BASE}/api/game/start`,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            username:
+                                state.currentUser.username,
+
+                            game_type:
+                                gameType
+                        })
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+
+                toast(
+                    data?.error ||
+                    "شروع بازی ناموفق بود."
+                );
+
+                return;
+            }
+
+            if (data?.success) {
+
+                state.currentGame = {
+                    type:
+                        gameType,
+
+                    data:
+                        data
+                };
+
+                openGame(
+                    gameType,
+                    data
+                );
+
+                state.socket.emit(
+                    "spy_get_state",
+                    {
+                        game_id:
+                            data.game_id,
+
+                        username:
+                            state.currentUser.username
+                    }
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "START GAME ERROR:",
+                error
+            );
+
+            toast(
+                "ارتباط با سرور برقرار نشد."
+            );
+        }
+    }
+
 
     function openGame(gameType, serverData = null) {
 
@@ -2927,9 +2984,18 @@
                         const game =
                             button.dataset.game;
 
-                        openGame(
-                            game
-                        );
+                        if (game === "spy") {
+
+                            startGameFromServer(
+                                "spy"
+                            );
+
+                        } else {
+
+                            openGame(
+                                game
+                            );
+                        }
                     }
                 );
             });

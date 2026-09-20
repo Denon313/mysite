@@ -270,6 +270,199 @@ chat_cache = []
 
 active_games = {}
 
+# =========================================================
+# SPY GAME ENGINE
+# =========================================================
+
+SPY_DEFAULT_WORDS = [
+    ("سینما", "فیلم"),
+    ("بیمارستان", "دکتر"),
+    ("فرودگاه", "هواپیما"),
+    ("رستوران", "غذا"),
+    ("مدرسه", "معلم"),
+    ("استخر", "شنا"),
+    ("کتابخانه", "کتاب"),
+    ("پارک", "تاب"),
+    ("هتل", "اتاق"),
+    ("فوتبال", "استادیوم"),
+    ("عروسی", "داماد"),
+    ("آشپزخانه", "اجاق"),
+    ("پلیس", "بازداشتگاه"),
+    ("ساحل", "دریا"),
+    ("باغ وحش", "شیر"),
+]
+
+
+def create_spy_game(game_id, players, host):
+    if len(players) < 3 or len(players) > 5:
+        raise ValueError("بازی جاسوس به ۳ تا ۵ بازیکن نیاز دارد.")
+
+    common_word, spy_hint = random.choice(SPY_DEFAULT_WORDS)
+    spy_username = random.choice(players)
+
+    player_states = {}
+
+    for username in players:
+        if username == spy_username:
+            player_states[username] = {
+                "username": username,
+                "role": "spy",
+                "word": None,
+                "hint": spy_hint,
+                "vote": None,
+            }
+        else:
+            player_states[username] = {
+                "username": username,
+                "role": "citizen",
+                "word": common_word,
+                "hint": None,
+                "vote": None,
+            }
+
+    active_games[game_id] = {
+        "id": game_id,
+        "game_type": "spy",
+        "host": host,
+        "players": players,
+        "phase": "discussion",
+        "started_at": time.time(),
+        "discussion_seconds": 120,
+        "voting_seconds": 10,
+        "phase_ends_at": time.time() + 120,
+        "votes": {},
+        "vote_locked": False,
+        "result": None,
+        "spy_username": spy_username,
+        "common_word": common_word,
+        "spy_hint": spy_hint,
+        "player_states": player_states,
+    }
+
+    return active_games[game_id]
+
+
+def get_spy_private_state(game, username):
+    player = game.get("player_states", {}).get(username)
+
+    if not player:
+        return None
+
+    if player["role"] == "spy":
+        return {
+            "username": username,
+            "role": "spy",
+            "word": None,
+            "hint": player.get("hint"),
+        }
+
+    return {
+        "username": username,
+        "role": "citizen",
+        "word": player.get("word"),
+        "hint": None,
+    }
+
+
+def get_spy_public_state(game):
+    return {
+        "game_id": game["id"],
+        "game_type": "spy",
+        "phase": game["phase"],
+        "players": game["players"],
+        "phase_ends_at": game["phase_ends_at"],
+        "discussion_seconds": game["discussion_seconds"],
+        "voting_seconds": game["voting_seconds"],
+        "vote_locked": game["vote_locked"],
+        "result": game.get("result"),
+    }
+
+
+def start_spy_voting(game):
+    game["phase"] = "voting"
+    game["vote_locked"] = False
+    game["votes"] = {}
+    game["phase_ends_at"] = (
+        time.time() + game["voting_seconds"]
+    )
+
+
+def submit_spy_vote(game, voter, target):
+    if game["phase"] != "voting":
+        return False, "الان زمان رأی‌گیری نیست."
+
+    if game["vote_locked"]:
+        return False, "رأی‌گیری بسته شده است."
+
+    if voter not in game["players"]:
+        return False, "بازیکن معتبر نیست."
+
+    if target not in game["players"]:
+        return False, "هدف رأی معتبر نیست."
+
+    if voter == target:
+        return False, "نمی‌توانید به خودتان رأی بدهید."
+
+    game["votes"][voter] = target
+
+    return True, "رأی ثبت شد."
+
+
+def finish_spy_voting(game):
+    if game["vote_locked"]:
+        return game.get("result")
+
+    game["vote_locked"] = True
+
+    vote_counts = {}
+
+    for target in game["votes"].values():
+        vote_counts[target] = (
+            vote_counts.get(target, 0) + 1
+        )
+
+    max_votes = 0
+    eliminated = None
+    tied = False
+
+    for player in game["players"]:
+        count = vote_counts.get(player, 0)
+
+        if count > max_votes:
+            max_votes = count
+            eliminated = player
+            tied = False
+
+        elif count == max_votes and count > 0:
+            tied = True
+
+    if tied:
+        eliminated = None
+
+    spy_username = game["spy_username"]
+
+    if eliminated is None:
+        winner = "spy"
+    elif eliminated == spy_username:
+        winner = "citizens"
+    else:
+        winner = "spy"
+
+    game["phase"] = "finished"
+
+    game["result"] = {
+        "winner": winner,
+        "spy": spy_username,
+        "eliminated": eliminated,
+        "vote_counts": vote_counts,
+        "total_votes": len(game["votes"]),
+        "common_word": game["common_word"],
+        "spy_hint": game["spy_hint"],
+    }
+
+    return game["result"]
+
+
 
 # ========================================================= # HELPERS
 # =========================================================
@@ -1290,17 +1483,30 @@ def start_game():
 
     game_id = uuid.uuid4().hex
 
-    active_games[game_id] = {
-        "id": game_id,
-        "game_type": game_type,
-        "host": username,
-        "players": [
-            p["username"]
-            for p in room_players()
-        ],
-        "phase": "waiting",
-        "started_at": time.time()
-    }
+    players = [
+        p["username"]
+        for p in room_players()
+    ]
+
+    if game_type == "spy":
+        active_games[game_id] = create_spy_game(
+            game_id,
+            players,
+            username
+        )
+
+        start_spy_server_timer(
+            game_id
+        )
+    else:
+        active_games[game_id] = {
+            "id": game_id,
+            "game_type": game_type,
+            "host": username,
+            "players": players,
+            "phase": "waiting",
+            "started_at": time.time()
+        }
 
     conn = get_db()
 
@@ -1402,6 +1608,370 @@ def socket_disconnect():
                 all_players()
         },
         room=MAIN_ROOM
+    )
+
+
+
+# =========================================================
+# SPY PRIVATE ROLE EVENT
+# =========================================================
+
+def send_spy_private_role(game_id, username, sid=None):
+    game = active_games.get(game_id)
+
+    if not game:
+        return False
+
+    if game.get("game_type") != "spy":
+        return False
+
+    private_state = get_spy_private_state(
+        game,
+        username
+    )
+
+    if not private_state:
+        return False
+
+    target_sid = sid
+
+    if not target_sid:
+        for socket_id, user in user_sids.items():
+            if user == username:
+                target_sid = socket_id
+                break
+
+    if not target_sid:
+        return False
+
+    socketio.emit(
+        "spy_private_role",
+        private_state,
+        to=target_sid
+    )
+
+    return True
+
+
+@socketio.on("spy_request_role")
+def spy_request_role(data):
+    data = data or {}
+
+    username = data.get(
+        "username",
+        ""
+    )
+
+    game_id = data.get(
+        "game_id",
+        ""
+    )
+
+    if not valid_username(username):
+        return
+
+    if not game_id:
+        return
+
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    if game.get("game_type") != "spy":
+        return
+
+    if username not in game.get(
+        "players",
+        []
+    ):
+        return
+
+    send_spy_private_role(
+        game_id,
+        username,
+        request.sid
+    )
+
+
+
+# =========================================================
+# SPY VOTING SOCKET EVENTS
+# =========================================================
+
+
+# =========================================================
+# SPY SERVER TIMER
+# =========================================================
+
+def spy_timer_loop(game_id):
+    while True:
+        time.sleep(0.5)
+
+        game = active_games.get(game_id)
+
+        if not game:
+            return
+
+        game_type = game.get("game_type")
+        phase = game.get("phase")
+
+        if game_type != "spy":
+            return
+
+        if phase == "finished":
+            return
+
+        now = time.time()
+        end_time = game.get(
+            "phase_ends_at",
+            0
+        )
+
+        if now < end_time:
+            continue
+
+        if phase == "discussion":
+            start_spy_voting(game)
+
+            socketio.emit(
+                "spy_voting_started",
+                get_spy_public_state(game),
+                room=MAIN_ROOM
+            )
+
+            continue
+
+        if phase == "voting":
+            result = finish_spy_voting(game)
+
+            socketio.emit(
+                "spy_game_finished",
+                result,
+                room=MAIN_ROOM
+            )
+
+            socketio.emit(
+                "spy_game_state",
+                get_spy_public_state(game),
+                room=MAIN_ROOM
+            )
+
+            return
+
+
+def start_spy_server_timer(game_id):
+    socketio.start_background_task(
+        spy_timer_loop,
+        game_id
+    )
+
+
+def broadcast_spy_public_state(game_id):
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    socketio.emit(
+        "spy_game_state",
+        get_spy_public_state(game),
+        room=MAIN_ROOM
+    )
+
+
+def finish_spy_game_if_needed(game_id):
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    if game.get("game_type") != "spy":
+        return
+
+    if game.get("phase") == "discussion":
+        if time.time() >= game.get(
+            "phase_ends_at",
+            0
+        ):
+            start_spy_voting(game)
+            broadcast_spy_public_state(game)
+
+    elif game.get("phase") == "voting":
+        if time.time() >= game.get(
+            "phase_ends_at",
+            0
+        ):
+            result = finish_spy_voting(game)
+
+            socketio.emit(
+                "spy_game_finished",
+                result,
+                room=MAIN_ROOM
+            )
+
+            broadcast_spy_public_state(game)
+
+
+@socketio.on("spy_start_voting")
+def spy_start_voting(data):
+    data = data or {}
+
+    game_id = data.get(
+        "game_id",
+        ""
+    )
+
+    username = data.get(
+        "username",
+        ""
+    )
+
+    if not valid_username(username):
+        return
+
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    if game.get("game_type") != "spy":
+        return
+
+    if username not in game.get(
+        "players",
+        []
+    ):
+        return
+
+    if game.get("phase") != "discussion":
+        return
+
+    start_spy_voting(game)
+
+    socketio.emit(
+        "spy_voting_started",
+        get_spy_public_state(game),
+        room=MAIN_ROOM
+    )
+
+
+@socketio.on("spy_vote")
+def spy_vote(data):
+    data = data or {}
+
+    game_id = data.get(
+        "game_id",
+        ""
+    )
+
+    voter = data.get(
+        "voter",
+        ""
+    )
+
+    target = data.get(
+        "target",
+        ""
+    )
+
+    if not valid_username(voter):
+        return
+
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    if game.get("game_type") != "spy":
+        return
+
+    if game.get("phase") != "voting":
+        return
+
+    success, message = submit_spy_vote(
+        game,
+        voter,
+        target
+    )
+
+    socketio.emit(
+        "spy_vote_status",
+        {
+            "success": success,
+            "message": message,
+            "voter": voter
+        },
+        to=request.sid
+    )
+
+    if not success:
+        return
+
+    total_players = len(
+        game.get("players", [])
+    )
+
+    total_votes = len(
+        game.get("votes", {})
+    )
+
+    if total_votes >= total_players:
+        result = finish_spy_voting(game)
+
+        socketio.emit(
+            "spy_game_finished",
+            result,
+            room=MAIN_ROOM
+        )
+
+        broadcast_spy_public_state(game)
+
+
+@socketio.on("spy_get_state")
+def spy_get_state(data):
+    data = data or {}
+
+    game_id = data.get(
+        "game_id",
+        ""
+    )
+
+    username = data.get(
+        "username",
+        ""
+    )
+
+    if not valid_username(username):
+        return
+
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    if game.get("game_type") != "spy":
+        return
+
+    finish_spy_game_if_needed(
+        game_id
+    )
+
+    game = active_games.get(game_id)
+
+    if not game:
+        return
+
+    socketio.emit(
+        "spy_game_state",
+        get_spy_public_state(game),
+        to=request.sid
+    )
+
+    send_spy_private_role(
+        game_id,
+        username,
+        request.sid
     )
 
 
