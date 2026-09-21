@@ -3610,14 +3610,17 @@ function closeGame() {
     ===================================================== */
 
     async function init() {
+        console.log("GAME_ROOM_INIT_STARTED");
 
         if (state.initialized) {
             return;
         }
 
         state.initialized = true;
+        console.log("GAME_ROOM_BEFORE_LOGIN_BUTTONS");
 
         setupLoginButtons();
+        console.log("GAME_ROOM_AFTER_LOGIN_BUTTONS");
         setupEvents();
 
         renderActivities();
