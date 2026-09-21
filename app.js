@@ -1937,13 +1937,13 @@ const SpyGameUI = {
 
         modal.innerHTML = `
             <div class="spy-v2">
-                <div class="spy-v2-header">
+                <div class="spy-v2-head">
                     <div>
-                        <div class="spy-v2-title">
+                        <div class="spy-v2-title spy-v2-head-title">
                             🕵️ بازی جاسوس
                         </div>
                         <div id="spyStatus"
-                             class="spy-v2-subtitle">
+                             class="spy-v2-subtitle spy-v2-head-subtitle">
                             در حال اتصال...
                         </div>
                     </div>
@@ -2008,7 +2008,7 @@ const SpyGameUI = {
                         >×</button>
                     </div>
 
-                    <div class="spy-v2-input-row">
+                    <div class="spy-v2-input">
                         <input
                             id="spyInput"
                             type="text"
@@ -2589,6 +2589,23 @@ const SpyGameUI = {
         this.lastPhase =
             data.phase;
 
+        const gameModal = $("#gameModal");
+
+        if (gameModal) {
+            if (
+                data.phase === "discussion" ||
+                data.phase === "voting"
+            ) {
+                gameModal.classList.add(
+                    "spy-chat-fullscreen"
+                );
+            } else {
+                gameModal.classList.remove(
+                    "spy-chat-fullscreen"
+                );
+            }
+        }
+
         this.renderLobby(data);
         this.renderRole(data);
         this.renderTimer(data);
@@ -2843,7 +2860,10 @@ const SpyGameUI = {
         state.currentGame = null;
 
         const modal = $("#gameModal");
-        modal?.classList.remove("spy-game-active");
+        modal?.classList.remove(
+            "spy-game-active",
+            "spy-chat-fullscreen"
+        );
 
         hide(modal);
     }
