@@ -150,6 +150,7 @@ def get_db():
     )
 
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     return conn
 
@@ -230,6 +231,33 @@ def init_db():
         )
     """)
 
+    # ========================================================
+    # SPY WORD BANK
+    # ========================================================
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS spy_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT NOT NULL UNIQUE,
+            enabled INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS spy_word_aliases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word_id INTEGER NOT NULL,
+            alias TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(word_id, alias),
+            FOREIGN KEY(word_id)
+                REFERENCES spy_words(id)
+                ON DELETE CASCADE
+        )
+    """)
+
     for username, player in PLAYERS.items():
 
         existing = conn.execute(
@@ -301,6 +329,46 @@ def now():
 def player_exists(username):
 
     return username in PLAYERS
+
+
+def get_active_spy_words():
+    conn = get_db()
+
+    rows = conn.execute(
+        """
+        SELECT id, word
+        FROM spy_words
+        WHERE enabled = 1
+        ORDER BY id ASC
+        """
+    ).fetchall()
+
+    result = []
+
+    for row in rows:
+        aliases = conn.execute(
+            """
+            SELECT alias
+            FROM spy_word_aliases
+            WHERE word_id = ?
+            ORDER BY id ASC
+            """,
+            (row["id"],)
+        ).fetchall()
+
+        result.append(
+            {
+                "word": row["word"],
+                "aliases": [
+                    alias["alias"]
+                    for alias in aliases
+                ],
+            }
+        )
+
+    conn.close()
+
+    return result
 
 
 def get_player(username):
@@ -1156,6 +1224,325 @@ def unblock_player(username):
     })
 
 
+# =========================================================
+# SPY WORD BANK - ADMIN: LIST
+# =========================================================
+
+@app.get("/api/game/admin/spy-words")
+@admin_required
+def admin_list_spy_words():
+    conn = get_db()
+
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            word,
+            enabled,
+            created_at,
+            updated_at
+        FROM spy_words
+        ORDER BY id ASC
+        """
+    ).fetchall()
+
+    result = []
+
+    for row in rows:
+        aliases = conn.execute(
+            """
+            SELECT alias
+            FROM spy_word_aliases
+            WHERE word_id = ?
+            ORDER BY id ASC
+            """,
+            (row["id"],)
+        ).fetchall()
+
+        result.append({
+            "id": row["id"],
+            "word": row["word"],
+            "enabled": bool(row["enabled"]),
+            "aliases": [item["alias"] for item in aliases],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        })
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "words": result,
+        "count": len(result),
+    })
+
+
+# =========================================================
+# SPY WORD BANK - ADMIN: ADD
+# =========================================================
+
+@app.post("/api/game/admin/spy-words")
+@admin_required
+def admin_add_spy_word():
+    data = json_body()
+
+    word = str(data.get("word", "")).strip()
+    aliases = data.get("aliases", [])
+
+    if not word:
+        return jsonify({
+            "success": False,
+            "error": "کلمه الزامی است."
+        }), 400
+
+    if not isinstance(aliases, list):
+        return jsonify({
+            "success": False,
+            "error": "aliases باید به صورت لیست باشد."
+        }), 400
+
+    cleaned_aliases = []
+    for alias in aliases:
+        alias = str(alias).strip()
+        if alias and alias not in cleaned_aliases:
+            cleaned_aliases.append(alias)
+
+    conn = get_db()
+
+    try:
+        cursor = conn.execute(
+            """
+            INSERT INTO spy_words (word, enabled, updated_at)
+            VALUES (?, 1, CURRENT_TIMESTAMP)
+            """,
+            (word,)
+        )
+
+        word_id = cursor.lastrowid
+
+        for alias in cleaned_aliases:
+            conn.execute(
+                """
+                INSERT INTO spy_word_aliases (word_id, alias)
+                VALUES (?, ?)
+                """,
+                (word_id, alias)
+            )
+
+        conn.commit()
+
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        conn.close()
+
+        return jsonify({
+            "success": False,
+            "error": "این کلمه قبلاً وجود دارد."
+        }), 409
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": word_id,
+        "word": word,
+        "aliases": cleaned_aliases
+    }), 201
+
+
+# =========================================================
+# SPY WORD BANK - ADMIN: EDIT
+# =========================================================
+
+@app.put("/api/game/admin/spy-words/<int:word_id>")
+@admin_required
+def admin_edit_spy_word(word_id):
+    data = json_body()
+
+    word = str(data.get("word", "")).strip()
+    aliases = data.get("aliases", [])
+    enabled = data.get("enabled", 1)
+
+    if not word:
+        return jsonify({
+            "success": False,
+            "error": "کلمه الزامی است."
+        }), 400
+
+    if not isinstance(aliases, list):
+        return jsonify({
+            "success": False,
+            "error": "aliases باید به صورت لیست باشد."
+        }), 400
+
+    cleaned_aliases = []
+    for alias in aliases:
+        alias = str(alias).strip()
+        if alias and alias not in cleaned_aliases:
+            cleaned_aliases.append(alias)
+
+    enabled = 1 if bool(enabled) else 0
+
+    conn = get_db()
+
+    existing = conn.execute(
+        """
+        SELECT id
+        FROM spy_words
+        WHERE id = ?
+        """,
+        (word_id,)
+    ).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({
+            "success": False,
+            "error": "کلمه پیدا نشد."
+        }), 404
+
+    try:
+        conn.execute(
+            """
+            UPDATE spy_words
+            SET word = ?,
+                enabled = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (word, enabled, word_id)
+        )
+
+        conn.execute(
+            """
+            DELETE FROM spy_word_aliases
+            WHERE word_id = ?
+            """,
+            (word_id,)
+        )
+
+        for alias in cleaned_aliases:
+            conn.execute(
+                """
+                INSERT INTO spy_word_aliases (word_id, alias)
+                VALUES (?, ?)
+                """,
+                (word_id, alias)
+            )
+
+        conn.commit()
+
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        conn.close()
+
+        return jsonify({
+            "success": False,
+            "error": "این کلمه قبلاً وجود دارد."
+        }), 409
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": word_id,
+        "word": word,
+        "enabled": bool(enabled),
+        "aliases": cleaned_aliases
+    })
+
+
+# =========================================================
+# SPY WORD BANK - ADMIN: DELETE
+# =========================================================
+
+@app.delete("/api/game/admin/spy-words/<int:word_id>")
+@admin_required
+def admin_delete_spy_word(word_id):
+    conn = get_db()
+
+    existing = conn.execute(
+        """
+        SELECT id, word
+        FROM spy_words
+        WHERE id = ?
+        """,
+        (word_id,)
+    ).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({
+            "success": False,
+            "error": "کلمه پیدا نشد."
+        }), 404
+
+    conn.execute(
+        """
+        DELETE FROM spy_words
+        WHERE id = ?
+        """,
+        (word_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "deleted_id": word_id,
+        "word": existing["word"]
+    })
+
+
+# =========================================================
+# SPY WORD BANK - ADMIN: TOGGLE
+# =========================================================
+
+@app.patch("/api/game/admin/spy-words/<int:word_id>/toggle")
+@admin_required
+def admin_toggle_spy_word(word_id):
+    conn = get_db()
+
+    existing = conn.execute(
+        """
+        SELECT id, word, enabled
+        FROM spy_words
+        WHERE id = ?
+        """,
+        (word_id,)
+    ).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({
+            "success": False,
+            "error": "کلمه پیدا نشد."
+        }), 404
+
+    new_enabled = 0 if existing["enabled"] else 1
+
+    conn.execute(
+        """
+        UPDATE spy_words
+        SET enabled = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (new_enabled, word_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "id": word_id,
+        "word": existing["word"],
+        "enabled": bool(new_enabled)
+    })
+
+
 # ========================================================= # SCENARIOS
 # =========================================================
 
@@ -1319,7 +1706,19 @@ def _start_game_debug():
     username = str(data.get("username", "")).strip()
     game_type = str(data.get("game_type", "")).strip()
 
-    discussion_seconds = 120
+    if not valid_username(username):
+        return jsonify({
+            "error": "کاربر معتبر نیست."
+        }), 401
+
+    if game_type not in VALID_GAMES:
+        return jsonify({
+            "error": "بازی معتبر نیست."
+        }), 400
+
+    # ========================================================
+    # SPY
+    # ========================================================
 
     if game_type == "spy":
         try:
@@ -1334,39 +1733,142 @@ def _start_game_debug():
             min(1800, discussion_seconds)
         )
 
-    if not valid_username(username):
-        return jsonify({
-            "error": "کاربر معتبر نیست."
-        }), 401
+        players = list(spy_lobby_players)
 
-    if game_type not in VALID_GAMES:
-        return jsonify({
-            "error": "بازی معتبر نیست."
-        }), 400
+        if len(players) < 3:
+            return jsonify({
+                "error": "برای شروع بازی جاسوس حداقل ۳ بازیکن لازم است."
+            }), 400
 
-    # فقط مدیر اجازه شروع بازی را دارد
+        if len(players) > 5:
+            return jsonify({
+                "error": "حداکثر ۵ بازیکن می‌توانند در بازی جاسوس باشند."
+            }), 400
+
+        # نفر اول لابی = میزبان
+        lobby_host = players[0]
+
+        is_admin = (
+            PLAYERS.get(username, {}).get("role")
+            == "admin"
+        )
+
+        if username != lobby_host and not is_admin:
+            return jsonify({
+                "error": "فقط میزبان لابی یا مدیر می‌تواند بازی را شروع کند."
+            }), 403
+
+        game_id = uuid.uuid4().hex
+
+        print(
+            "SPY START:",
+            "game_id=", game_id,
+            "host=", lobby_host,
+            "requester=", username,
+            "players=", players,
+            "discussion=", discussion_seconds,
+            flush=True
+        )
+
+        try:
+            game = create_spy_game(
+                game_id,
+                players,
+                lobby_host,
+                discussion_seconds
+            )
+
+            active_games[game_id] = game
+
+            start_spy_server_timer(game_id)
+
+        except Exception as error:
+            print(
+                "SPY START ERROR:",
+                repr(error),
+                flush=True
+            )
+            traceback.print_exc()
+
+            active_games.pop(game_id, None)
+
+            return jsonify({
+                "error": "خطا در ساخت بازی جاسوس.",
+                "exception": repr(error)
+            }), 500
+
+        # انتقال وضعیت اتاق اصلی به playing
+        conn = get_db()
+
+        conn.execute(
+            """
+            UPDATE rooms
+            SET
+                game_type = ?,
+                status = 'playing',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                game_type,
+                MAIN_ROOM
+            )
+        )
+
+        conn.commit()
+        conn.close()
+
+        add_activity(
+            "🎮",
+            "بازی جدید شروع شد",
+            "spy"
+        )
+
+        # لابی اصلی بعد از شروع بازی خالی می‌شود
+        spy_lobby_players.clear()
+
+        broadcast_spy_lobby()
+
+        socketio.emit(
+            "game_started",
+            {
+                "game_id": game_id,
+                "game_type": game_type,
+                "players": players
+            },
+            room=MAIN_ROOM
+        )
+
+        return jsonify({
+            "success": True,
+            "game_id": game_id,
+            "game_type": game_type,
+            "host": lobby_host,
+            "players": players
+        })
+
+    # ========================================================
+    # MYSTERY / FORBIDDEN
+    # ========================================================
+
+    # فعلاً قوانین قبلی این دو بازی حفظ می‌شود:
+    # فقط مدیر اجازه شروع دارد.
     if PLAYERS.get(username, {}).get("role") != "admin":
         return jsonify({
             "error": "فقط مدیر می‌تواند بازی را شروع کند."
         }), 403
 
-    if game_type == "spy":
-        min_players = 3
-        max_players = 5
-    elif game_type == "mystery":
+    if game_type == "mystery":
         min_players = 2
         max_players = 5
     else:
         min_players = 4
         max_players = 4
 
-    if game_type == "spy":
-        players = list(spy_lobby_players)
-    else:
-        players = [
-            p["username"]
-            for p in room_players()
-        ]
+    players = [
+        p["username"]
+        for p in room_players()
+    ]
 
     current_players = len(players)
 
@@ -1384,49 +1886,14 @@ def _start_game_debug():
 
     game_id = uuid.uuid4().hex
 
-    print(
-        "START_GAME DEBUG:",
-        "type=", game_type,
-        "username=", username,
-        "players=", players,
-        "count=", len(players),
-        flush=True
-    )
-
-    if game_type == "spy":
-        print(
-            "START_GAME DEBUG: creating spy game",
-            flush=True
-        )
-
-        active_games[game_id] = create_spy_game(
-            game_id,
-            players,
-            username,
-            discussion_seconds
-        )
-
-        print(
-            "START_GAME DEBUG: spy game created",
-            flush=True
-        )
-
-        start_spy_server_timer(game_id)
-
-        print(
-            "START_GAME DEBUG: timer started",
-            flush=True
-        )
-
-    else:
-        active_games[game_id] = {
-            "id": game_id,
-            "game_type": game_type,
-            "host": username,
-            "players": players,
-            "phase": "waiting",
-            "started_at": time.time()
-        }
+    active_games[game_id] = {
+        "id": game_id,
+        "game_type": game_type,
+        "host": username,
+        "players": players,
+        "phase": "waiting",
+        "started_at": time.time()
+    }
 
     conn = get_db()
 
@@ -1454,15 +1921,12 @@ def _start_game_debug():
         f"{game_type}"
     )
 
-    if game_type == "spy":
-        spy_lobby_players.clear()
-
     socketio.emit(
         "game_started",
         {
             "game_id": game_id,
             "game_type": game_type,
-            "players": active_games[game_id]["players"]
+            "players": players
         },
         room=MAIN_ROOM
     )
@@ -1502,29 +1966,54 @@ def socket_disconnect():
 
     username = info["username"]
 
-    if username in spy_lobby_players:
-        spy_lobby_players.remove(username)
+    # اگر کاربر هنوز با Socket دیگری وصل است،
+    # فعلاً او را Offline نکن.
+    still_connected = any(
+        item.get("username") == username
+        for item in user_sids.values()
+    )
 
-        broadcast_spy_lobby()
+    if not still_connected:
 
-    if username in connected_users:
+        if username in spy_lobby_players:
+            spy_lobby_players.remove(username)
+            broadcast_spy_lobby()
 
-        connected_users.pop(
-            username,
-            None
+        # بازیکن را در تمام بازی‌های فعال Spy قطع‌شده علامت بزن.
+        for game_id, game in list(active_games.items()):
+            try:
+                if hasattr(game, "players"):
+                    with game.lock:
+                        if username in game.players:
+                            disconnect_spy_player(
+                                game_id,
+                                username,
+                            )
+            except Exception as exc:
+                print(
+                    "Spy disconnect error:",
+                    game_id,
+                    username,
+                    exc,
+                )
+
+        if username in connected_users:
+            connected_users.pop(
+                username,
+                None
+            )
+
+        socketio.emit(
+            "game_status_update",
+            {
+                "username": username,
+                "status": "offline"
+            },
+            room=MAIN_ROOM
         )
 
     leave_room(
         MAIN_ROOM
-    )
-
-    socketio.emit(
-        "game_status_update",
-        {
-            "username": username,
-            "status": "offline"
-        },
-        room=MAIN_ROOM
     )
 
     socketio.emit(
@@ -1723,7 +2212,12 @@ def socket_chat_history(data=None):
             )
             return
 
-        if username not in game.get("players", []):
+        if hasattr(game, "players"):
+            is_member = username in game.players
+        else:
+            is_member = username in game.get("players", [])
+
+        if not is_member:
             emit(
                 "game_chat_error",
                 {"error": "شما عضو این بازی نیستید."}
@@ -1778,7 +2272,12 @@ def socket_chat(data):
             )
             return
 
-        if username not in game.get("players", []):
+        if hasattr(game, "players"):
+            is_member = username in game.players
+        else:
+            is_member = username in game.get("players", [])
+
+        if not is_member:
             emit(
                 "game_chat_error",
                 {"error": "شما عضو این بازی نیستید."}
@@ -1836,7 +2335,12 @@ def socket_chat_image(data):
             )
             return
 
-        if username not in game.get("players", []):
+        if hasattr(game, "players"):
+            is_member = username in game.players
+        else:
+            is_member = username in game.get("players", [])
+
+        if not is_member:
             emit(
                 "game_chat_error",
                 {"error": "شما عضو این بازی نیستید."}
@@ -1907,9 +2411,7 @@ def socket_status_update(data):
 def socket_game_open(data):
     data = data or {}
 
-    username = str(
-        data.get("username", "")
-    ).strip()
+    username = get_socket_username()
 
     game_type = str(
         data.get("game_type", "")
@@ -1919,68 +2421,139 @@ def socket_game_open(data):
         data.get("game_id", "")
     ).strip()
 
+    if not username:
+        emit(
+            "game_error",
+            {
+                "error": "نشست کاربر معتبر نیست."
+            }
+        )
+        return
+
     if game_type not in VALID_GAMES:
         return
 
-    if not valid_username(username):
-        return
+    # ========================================================
+    # SPY — بازی جدید و Server Authoritative
+    # ========================================================
 
-    # اگر شناسه بازی از کلاینت آمده، همان بازی فعال را پیدا کن.
-    game = None
+    if game_type == "spy":
 
-    if game_id:
-        game = active_games.get(game_id)
+        if not game_id:
+            game_id = "spy-main-room"
 
-    # برای جاسوس، اگر game_id ارسال نشده ولی یک بازی فعال
-    # وجود دارد که کاربر داخل آن است، آن بازی را پیدا کن.
-    if game is None and game_type == "spy":
-        for active_game in active_games.values():
-            if (
-                active_game.get("game_type") == "spy"
-                and username in active_game.get("players", [])
-                and active_game.get("phase") != "finished"
-            ):
-                game = active_game
-                game_id = active_game.get("id", "")
-                break
+        spy_game = active_games.get(game_id)
 
-    if game is not None:
-        if username not in game.get("players", []):
+        if spy_game is None:
             emit(
-                "game_error",
+                "game_state_update",
                 {
-                    "error": "شما عضو این بازی نیستید."
+                    "game_type": "spy",
+                    "game_id": game_id,
+                    "game_state": {
+                        "phase": "waiting",
+                        "message": "بازی در حال آماده‌سازی است."
+                    }
                 }
             )
             return
 
-        game_room = f"game_{game_id}"
+        if not hasattr(spy_game, "players"):
+            emit(
+                "game_error",
+                {
+                    "error": "ساختار بازی Spy معتبر نیست."
+                }
+            )
+            return
 
-        join_room(game_room)
+        with spy_game.lock:
+            if username not in spy_game.players:
+                emit(
+                    "game_error",
+                    {
+                        "error": "شما عضو این بازی نیستید."
+                    }
+                )
+                return
+
+            if spy_game.phase == "finished":
+                emit(
+                    "game_error",
+                    {
+                        "error": "این بازی تمام شده است."
+                    }
+                )
+                return
+
+        join_room(f"spy:{game_id}")
 
         emit(
             "game_room_joined",
             {
                 "game_id": game_id,
-                "game_type": game_type,
+                "game_type": "spy",
                 "messages": get_chat_history(game_id)
             }
         )
 
-        emit(
-            "game_state_update",
-            {
-                "game_type": game_type,
-                "game_id": game_id,
-                "game_state": {
-                    "phase": game.get("phase"),
-                    "phase_ends_at": game.get("phase_ends_at"),
-                    "message": "بازی آماده است."
-                }
-            }
-        )
-
         return
+
+    # ========================================================
+    # LEGACY — Mystery / Forbidden
+    # ========================================================
+
+    game = None
+
+    if game_id:
+        game = active_games.get(game_id)
+
+    if game is not None:
+
+        if hasattr(game, "get"):
+            players = game.get(
+                "players",
+                []
+            )
+
+            if username not in players:
+                emit(
+                    "game_error",
+                    {
+                        "error": "شما عضو این بازی نیستید."
+                    }
+                )
+                return
+
+            game_room = f"game_{game_id}"
+
+            join_room(game_room)
+
+            emit(
+                "game_room_joined",
+                {
+                    "game_id": game_id,
+                    "game_type": game_type,
+                    "messages": get_chat_history(game_id)
+                }
+            )
+
+            emit(
+                "game_state_update",
+                {
+                    "game_type": game_type,
+                    "game_id": game_id,
+                    "game_state": {
+                        "phase": game.get("phase"),
+                        "phase_ends_at": game.get(
+                            "phase_ends_at"
+                        ),
+                        "message": "بازی آماده است."
+                    }
+                }
+            )
+
+            return
 
     emit(
         "game_state_update",
@@ -1992,7 +2565,6 @@ def socket_game_open(data):
             }
         }
     )
-
 
 @socketio.on("game_leave")
 def socket_game_leave(data):
@@ -2046,12 +2618,27 @@ def internal_error(error):
 # SPY GAME ENGINE
 # ============================================================
 
-from spy_game import register_spy_socket
+from spy_game import (
+    register_spy_socket,
+    spy_lobby_players,
+    create_spy_game,
+    start_spy_server_timer,
+    broadcast_spy_lobby,
+)
+
+def get_socket_username():
+    info = user_sids.get(request.sid)
+    if not info:
+        return None
+    return info.get("username")
+
 
 register_spy_socket(
     socketio,
     save_chat_callback=save_chat_message,
-    get_chat_history_callback=get_chat_history
+    get_chat_history_callback=get_chat_history,
+    get_socket_username_callback=get_socket_username,
+    get_spy_words_callback=get_active_spy_words
 )
 
 

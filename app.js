@@ -111,6 +111,7 @@ console.log("GAME_ROOM_APP_JS_LOADED");
         currentGame: null,
 
         pendingAdminLogin: false,
+        adminToken: null,
 
         initialized: false
     };
@@ -295,7 +296,13 @@ console.log("GAME_ROOM_APP_JS_LOADED");
                     return;
                 }
 
-                await verifyAdminPassword(username, password);
+                const adminLogin = await verifyAdminPassword(
+                    username,
+                    password
+                );
+
+                state.adminToken =
+                    adminLogin.admin_token || null;
             }
 
             state.currentUser = {
@@ -1925,6 +1932,9 @@ const SpyGameUI = {
             return;
         }
 
+        modal.classList.add("spy-game-active");
+        modal.classList.remove("hidden");
+
         modal.innerHTML = `
             <div class="spy-v2">
                 <div class="spy-v2-header">
@@ -2832,7 +2842,10 @@ const SpyGameUI = {
 
         state.currentGame = null;
 
-        hide($("#gameModal"));
+        const modal = $("#gameModal");
+        modal?.classList.remove("spy-game-active");
+
+        hide(modal);
     }
 };
 
@@ -3117,6 +3130,748 @@ function closeGame() {
     }
 
 
+    async function adminApiFetch(path, options = {}) {
+        const headers = {
+            ...(options.headers || {})
+        };
+
+        if (state.adminToken) {
+            headers["X-Admin-Token"] =
+                state.adminToken;
+        }
+
+        return fetch(
+            `${CONFIG.API_BASE}${path}`,
+            {
+                ...options,
+                headers
+            }
+        );
+    }
+
+
+    async function renderSpyWordsAdmin(content) {
+        content.innerHTML = `
+            <div class="admin-spy-words">
+                <div class="admin-spy-words-head">
+                    <div>
+                        <h3>🕵️ بانک کلمات Spy</h3>
+                        <p>مدیریت کلمات و Aliasهای بازی</p>
+                    </div>
+
+                    <div class="admin-spy-head-actions">
+                        <button
+                            class="admin-spy-add"
+                            id="spyWordsAdd"
+                            type="button"
+                        >
+                            ➕ افزودن کلمه
+                        </button>
+
+                        <button
+                            class="admin-spy-refresh"
+                            id="spyWordsRefresh"
+                            type="button"
+                        >
+                            🔄 تازه‌سازی
+                        </button>
+                    </div>
+                </div>
+
+                <div class="admin-spy-stats">
+                    <div class="admin-stat">
+                        <span>📚</span>
+                        <strong id="spyWordsTotal">0</strong>
+                        <small>کل کلمات</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>🟢</span>
+                        <strong id="spyWordsEnabled">0</strong>
+                        <small>فعال</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>⚪</span>
+                        <strong id="spyWordsDisabled">0</strong>
+                        <small>غیرفعال</small>
+                    </div>
+                </div>
+
+                <div class="admin-spy-search">
+                    <input
+                        id="spyWordsSearch"
+                        type="search"
+                        placeholder="🔍 جستجوی کلمه یا Alias..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div
+                    id="spyWordAddForm"
+                    class="admin-spy-add-form"
+                    hidden
+                >
+                    <div class="admin-spy-form-head">
+                        <strong>➕ افزودن کلمه جدید</strong>
+                        <button
+                            type="button"
+                            id="spyWordAddClose"
+                            class="admin-spy-form-close"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <label class="admin-spy-field">
+                        <span>کلمه اصلی</span>
+                        <input
+                            id="spyWordInput"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="مثلاً: بیمارستان"
+                        >
+                    </label>
+
+                    <label class="admin-spy-field">
+                        <span>Aliasها</span>
+                        <textarea
+                            id="spyWordAliases"
+                            rows="3"
+                            placeholder="مثلاً: درمانگاه، شفاخانه، بیمارستانی"
+                        ></textarea>
+                        <small>
+                            Aliasها را با ویرگول جدا کنید.
+                        </small>
+                    </label>
+
+                    <div class="admin-spy-form-actions">
+                        <button
+                            type="button"
+                            id="spyWordAddCancel"
+                            class="admin-spy-cancel"
+                        >
+                            انصراف
+                        </button>
+
+                        <button
+                            type="button"
+                            id="spyWordAddSubmit"
+                            class="admin-spy-submit"
+                        >
+                            💾 ثبت کلمه
+                        </button>
+                    </div>
+                </div>
+
+                <div id="spyWordsList">
+                    <div class="empty-activity">
+                        ⏳ در حال دریافت بانک کلمات...
+                    </div>
+                </div>
+            </div>
+        `;
+
+        setupSpyWordAddForm(content);
+
+        const refreshButton =
+            $("#spyWordsRefresh");
+
+        if (refreshButton) {
+            refreshButton.addEventListener(
+                "click",
+                () => renderSpyWordsAdmin(content)
+            );
+        }
+
+        try {
+            const words =
+                await loadSpyWords();
+
+            window.__spyWordsCache = words;
+
+            renderSpyWordsList(words);
+
+            const list =
+                $("#spyWordsList");
+
+            if (
+                list &&
+                !list.dataset.actionsReady
+            ) {
+                setupSpyWordActions(list);
+                list.dataset.actionsReady = "true";
+            }
+
+            const search =
+                $("#spyWordsSearch");
+
+            if (search) {
+                search.addEventListener(
+                    "input",
+                    () => {
+                        renderSpyWordsList(
+                            words,
+                            search.value
+                        );
+                    }
+                );
+            }
+
+        } catch (error) {
+            console.error(error);
+
+            const list =
+                $("#spyWordsList");
+
+            if (list) {
+                list.innerHTML = `
+                    <div class="empty-activity">
+                        ❌ ${escapeHtml(
+                            error.message ||
+                            "دریافت بانک کلمات ناموفق بود."
+                        )}
+                    </div>
+                `;
+            }
+        }
+    }
+
+
+    function renderSpyWordsList(words, searchText = "") {
+        const query =
+            String(searchText || "")
+                .trim()
+                .toLowerCase();
+
+        const filtered =
+            words.filter((item) => {
+                const word =
+                    String(item.word || "")
+                        .toLowerCase();
+
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases.join(" ").toLowerCase()
+                        : "";
+
+                return !query ||
+                    word.includes(query) ||
+                    aliases.includes(query);
+            });
+
+        const total =
+            words.length;
+
+        const enabled =
+            words.filter(
+                (item) => item.enabled
+            ).length;
+
+        const disabled =
+            total - enabled;
+
+        setText(
+            $("#spyWordsTotal"),
+            total
+        );
+
+        setText(
+            $("#spyWordsEnabled"),
+            enabled
+        );
+
+        setText(
+            $("#spyWordsDisabled"),
+            disabled
+        );
+
+        const list =
+            $("#spyWordsList");
+
+        if (!list) {
+            return;
+        }
+
+        if (!filtered.length) {
+            list.innerHTML = `
+                <div class="admin-spy-empty">
+                    🔎 کلمه‌ای پیدا نشد.
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML =
+            filtered.map((item) => {
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases
+                        : [];
+
+                return `
+                    <div
+                        class="admin-spy-word-card"
+                        data-spy-word-id="${item.id}"
+                    >
+                        <div class="admin-spy-word-main">
+                            <strong class="admin-spy-word-title">
+                                ${escapeHtml(item.word)}
+                            </strong>
+
+                            <span class="${
+                                item.enabled
+                                    ? "spy-word-enabled"
+                                    : "spy-word-disabled"
+                            }">
+                                ${
+                                    item.enabled
+                                        ? "🟢 فعال"
+                                        : "⚪ غیرفعال"
+                                }
+                            </span>
+                        </div>
+
+                        <div class="admin-spy-aliases">
+                            ${
+                                aliases.length
+                                    ? aliases.map(
+                                        (alias) =>
+                                            `<span class="admin-spy-alias">${escapeHtml(alias)}</span>`
+                                    ).join("")
+                                    : `<small>بدون Alias</small>`
+                            }
+                        </div>
+
+                        <div class="admin-spy-word-actions">
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-edit"
+                                data-spy-action="edit"
+                                data-spy-id="${item.id}"
+                            >
+                                ✏️ ویرایش
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-toggle"
+                                data-spy-action="toggle"
+                                data-spy-id="${item.id}"
+                            >
+                                ${
+                                    item.enabled
+                                        ? "⚪ غیرفعال"
+                                        : "🟢 فعال"
+                                }
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-delete"
+                                data-spy-action="delete"
+                                data-spy-id="${item.id}"
+                            >
+                                🗑️ حذف
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+    }
+
+
+    async function createSpyWord(word, aliases = []) {
+        const response = await adminApiFetch(
+            "/api/game/admin/spy-words",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    word: String(word || "").trim(),
+                    aliases: Array.isArray(aliases)
+                        ? aliases
+                        : []
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "افزودن کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function updateSpyWord(
+        wordId,
+        word,
+        aliases = [],
+        enabled = true
+    ) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    word: String(word || "").trim(),
+                    aliases: Array.isArray(aliases)
+                        ? aliases
+                        : [],
+                    enabled: Boolean(enabled)
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "ویرایش کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function toggleSpyWord(wordId) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}/toggle`,
+            {
+                method: "PATCH"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "تغییر وضعیت کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function deleteSpyWord(wordId) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "حذف کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+
+    function setupSpyWordActions(list) {
+        if (!list) {
+            return;
+        }
+
+        list.addEventListener("click", async (event) => {
+            const button =
+                event.target.closest(
+                    "[data-spy-action]"
+                );
+
+            if (!button) {
+                return;
+            }
+
+            const action =
+                button.dataset.spyAction;
+
+            const wordId =
+                Number(button.dataset.spyId);
+
+            if (!wordId) {
+                return;
+            }
+
+            const words =
+                window.__spyWordsCache || [];
+
+            const item =
+                words.find(
+                    (word) =>
+                        Number(word.id) === wordId
+                );
+
+            if (!item) {
+                toast("کلمه پیدا نشد.");
+                return;
+            }
+
+            try {
+                button.disabled = true;
+
+                if (action === "toggle") {
+                    await toggleSpyWord(wordId);
+
+                    toast(
+                        item.enabled
+                            ? "کلمه غیرفعال شد."
+                            : "کلمه فعال شد."
+                    );
+
+                    await refreshSpyWordsAdmin();
+                    return;
+                }
+
+                if (action === "delete") {
+                    const confirmed =
+                        confirm(
+                            `کلمه «${item.word}» حذف شود؟`
+                        );
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    await deleteSpyWord(wordId);
+
+                    toast("کلمه حذف شد.");
+
+                    await refreshSpyWordsAdmin();
+                    return;
+                }
+
+                if (action === "edit") {
+                    const newWord =
+                        prompt(
+                            "کلمه جدید:",
+                            item.word
+                        );
+
+                    if (
+                        newWord === null ||
+                        !newWord.trim()
+                    ) {
+                        return;
+                    }
+
+                    const aliasText =
+                        prompt(
+                            "Aliasها را با ویرگول جدا کنید:",
+                            Array.isArray(item.aliases)
+                                ? item.aliases.join(", ")
+                                : ""
+                        );
+
+                    if (aliasText === null) {
+                        return;
+                    }
+
+                    const aliases =
+                        aliasText
+                            .split(",")
+                            .map(
+                                (alias) =>
+                                    alias.trim()
+                            )
+                            .filter(Boolean);
+
+                    await updateSpyWord(
+                        wordId,
+                        newWord.trim(),
+                        aliases,
+                        Boolean(item.enabled)
+                    );
+
+                    toast("کلمه ویرایش شد.");
+
+                    await refreshSpyWordsAdmin();
+                }
+            } catch (error) {
+                console.error(
+                    "Spy word action error:",
+                    error
+                );
+
+                toast(
+                    error.message ||
+                    "عملیات انجام نشد."
+                );
+            } finally {
+                button.disabled = false;
+            }
+        });
+    }
+
+    async function refreshSpyWordsAdmin() {
+        const content =
+            $("#adminContent");
+
+        if (!content) {
+            return;
+        }
+
+        await renderSpyWordsAdmin(content);
+    }
+
+
+    function setupSpyWordAddForm(content) {
+        const form = $("#spyWordAddForm");
+        const openButton = $("#spyWordsAdd");
+        const closeButton = $("#spyWordAddClose");
+        const cancelButton = $("#spyWordAddCancel");
+        const submitButton = $("#spyWordAddSubmit");
+        const wordInput = $("#spyWordInput");
+        const aliasesInput = $("#spyWordAliases");
+
+        if (
+            !form ||
+            !openButton ||
+            !submitButton ||
+            !wordInput ||
+            !aliasesInput
+        ) {
+            return;
+        }
+
+        const closeForm = () => {
+            form.hidden = true;
+            wordInput.value = "";
+            aliasesInput.value = "";
+        };
+
+        openButton.addEventListener("click", () => {
+            form.hidden = false;
+            wordInput.focus();
+        });
+
+        if (closeButton) {
+            closeButton.addEventListener(
+                "click",
+                closeForm
+            );
+        }
+
+        if (cancelButton) {
+            cancelButton.addEventListener(
+                "click",
+                closeForm
+            );
+        }
+
+        submitButton.addEventListener(
+            "click",
+            async () => {
+                const word =
+                    wordInput.value.trim();
+
+                if (!word) {
+                    toast("کلمه اصلی را وارد کنید.");
+                    wordInput.focus();
+                    return;
+                }
+
+                const aliases =
+                    aliasesInput.value
+                        .split(",")
+                        .map(
+                            (alias) =>
+                                alias.trim()
+                        )
+                        .filter(Boolean);
+
+                try {
+                    submitButton.disabled = true;
+
+                    await createSpyWord(
+                        word,
+                        aliases
+                    );
+
+                    toast(
+                        "✅ کلمه با موفقیت اضافه شد."
+                    );
+
+                    closeForm();
+
+                    await refreshSpyWordsAdmin();
+                } catch (error) {
+                    console.error(
+                        "Create spy word error:",
+                        error
+                    );
+
+                    toast(
+                        error.message ||
+                        "افزودن کلمه انجام نشد."
+                    );
+                } finally {
+                    submitButton.disabled = false;
+                }
+            }
+        );
+
+        if (content) {
+            content.addEventListener(
+                "keydown",
+                (event) => {
+                    if (
+                        event.key === "Escape" &&
+                        !form.hidden
+                    ) {
+                        closeForm();
+                    }
+                }
+            );
+        }
+    }
+
+    async function loadSpyWords() {
+        const response =
+            await adminApiFetch(
+                "/api/game/admin/spy-words"
+            );
+
+        if (!response.ok) {
+            let data = {};
+
+            try {
+                data = await response.json();
+            } catch (_) {}
+
+            throw new Error(
+                data.error ||
+                "دریافت بانک کلمات انجام نشد."
+            );
+        }
+
+        const data =
+            await response.json();
+
+        return Array.isArray(data.words)
+            ? data.words
+            : [];
+    }
+
+
     async function loadAdminDashboard() {
 
         try {
@@ -3203,6 +3958,11 @@ function closeGame() {
         if (tab === "dashboard") {
 
             await loadAdminDashboard();
+            return;
+        }
+
+        if (tab === "spy-words") {
+            await renderSpyWordsAdmin(content);
             return;
         }
 
