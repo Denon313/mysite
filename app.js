@@ -2,7 +2,7 @@
    GAME ROOM - FRONTEND APPLICATION
    ========================================================= */
 
-(() => {
+(() => {\n    console.log("GAME_ROOM_APP_JS_LOADED");
     "use strict";
 
     /* =====================================================
@@ -203,6 +203,8 @@
             if (!button) {
                 return;
             }
+
+            console.log("LOGIN BUTTON CLICKED:", button.dataset.username);
 
             const username = button.dataset.username;
 
