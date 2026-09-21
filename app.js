@@ -1830,9 +1830,11 @@ const SpyGameUI = {
     messages: [],
     lastPhase: null,
     boundSocket: null,
+    chatJoined: false,
 
     open(gameId = "spy-main-room") {
         this.gameId = gameId || "spy-main-room";
+        this.chatJoined = false;
         this.replyTo = null;
         this.selectedVote = null;
         this.messages = [];
@@ -1898,21 +1900,6 @@ const SpyGameUI = {
             {
                 game_id: this.gameId,
                 username
-            }
-        );
-
-        state.socket.emit(
-            "spy_join_chat",
-            {
-                game_id: this.gameId,
-                username
-            }
-        );
-
-        state.socket.emit(
-            "spy_chat_history",
-            {
-                game_id: this.gameId
             }
         );
 
@@ -2263,7 +2250,9 @@ const SpyGameUI = {
         const seconds = Math.max(
             0,
             Number(
-                data.remaining_seconds || 0
+                data.remaining_seconds ??
+                data.remaining ??
+                0
             )
         );
 
@@ -2914,6 +2903,28 @@ function setupSpySocketListeners() {
             SpyGameUI.renderState(
                 data
             );
+
+            if (
+                data?.ok &&
+                data.game_id &&
+                !SpyGameUI.chatJoined
+            ) {
+                SpyGameUI.chatJoined = true;
+
+                socket.emit(
+                    "spy_join_chat",
+                    {
+                        game_id: data.game_id
+                    }
+                );
+
+                socket.emit(
+                    "spy_chat_history",
+                    {
+                        game_id: data.game_id
+                    }
+                );
+            }
         }
     );
 
