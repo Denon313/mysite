@@ -2,7 +2,8 @@
    GAME ROOM - FRONTEND APPLICATION
    ========================================================= */
 
-(() => {\n    console.log("GAME_ROOM_APP_JS_LOADED");
+(() => {
+    console.log("GAME_ROOM_APP_JS_LOADED");
     "use strict";
 
     /* =====================================================
