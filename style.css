@@ -1458,316 +1458,571 @@ input:focus-visible {
     }
 }
 
-/* ===== SPY GAME CHAT ===== */
-
-.spy-game-shell .spy-chat-section {
-    margin-top: 18px;
-    padding: 14px;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 22px;
-    background: rgba(255,255,255,.035);
-    backdrop-filter: blur(14px);
-}
-
-.spy-game-shell .spy-section-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 14px;
-    font-weight: 800;
-}
-
-.spy-game-shell .spy-main-chat {
-    height: 300px;
-    overflow-y: auto;
-    padding: 10px;
-    border-radius: 16px;
-    background: rgba(0,0,0,.18);
-    scroll-behavior: smooth;
-}
-
-.spy-game-shell .spy-main-chat .chat-message {
-    display: flex;
-    margin: 8px 0;
-}
-
-.spy-game-shell .spy-main-chat .chat-message.mine {
-    justify-content: flex-end;
-}
-
-.spy-game-shell .spy-main-chat .chat-message.other {
-    justify-content: flex-start;
-}
-
-.spy-game-shell .spy-main-chat .message-bubble {
-    max-width: 82%;
-    padding: 9px 12px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.07);
-    word-break: break-word;
-}
-
-.spy-game-shell .spy-main-chat .chat-message.mine .message-bubble {
-    background: rgba(120,80,255,.25);
-    border-bottom-right-radius: 5px;
-}
-
-.spy-game-shell .spy-main-chat .chat-message.other .message-bubble {
-    border-bottom-left-radius: 5px;
-}
-
-.spy-game-shell .spy-main-chat .message-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--muted);
-}
-
-.spy-game-shell .spy-main-chat .message-time {
-    font-size: 9px;
-    font-weight: 500;
-    opacity: .7;
-}
-
-.spy-game-shell .chat-input-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.spy-game-shell .chat-input-row input {
-    flex: 1;
-    min-width: 0;
-    height: 46px;
-    padding: 0 14px;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 14px;
-    outline: none;
-    background: rgba(255,255,255,.055);
-    color: inherit;
-}
-
-.spy-game-shell .chat-input-row button {
-    min-width: 72px;
-    height: 46px;
-    border: 0;
-    border-radius: 14px;
-    cursor: pointer;
-    font-weight: 800;
-    color: white;
-    background: linear-gradient(135deg,#7c4dff,#5e35b1);
-}
-
-.spy-game-shell .chat-input-row button:active {
-    transform: scale(.97);
-}
-
-@media (max-width: 480px) {
-    .spy-game-shell .spy-main-chat {
-        height: 260px;
-    }
-
-    .spy-game-shell .spy-main-chat .message-bubble {
-        max-width: 88%;
-    }
-}
-
 /* ============================================================
-   NEW SPY UI
+   SPY V2 — FINAL GAME ROOM UI
    ============================================================ */
 
-.new-spy {
+.spy-v2 {
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    width: 100%;
+    color: var(--text, #fff);
 }
 
-.new-spy-head {
+.spy-v2-head {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 13px;
     padding: 16px;
-    border-radius: 20px;
-    background: linear-gradient(
-        135deg,
-        rgba(124,77,255,.20),
-        rgba(255,255,255,.04)
-    );
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(124,77,255,.14), rgba(255,255,255,.035));
+    box-shadow: 0 12px 35px rgba(0,0,0,.18);
+    overflow: hidden;
 }
 
-.new-spy-icon {
-    width: 52px;
-    height: 52px;
-    display: grid;
-    place-items: center;
-    border-radius: 16px;
-    background: rgba(124,77,255,.18);
-    font-size: 27px;
+.spy-v2-kicker {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .8px;
+    color: #a98cff;
 }
 
-.new-spy-head h2 {
-    margin: 0;
+.spy-v2-head h2 {
+    margin: 2px 0 0;
     font-size: 20px;
+    font-weight: 900;
 }
 
-.new-spy-head p {
+.spy-v2-head p {
     margin: 4px 0 0;
-    color: var(--muted);
+    color: var(--muted, #9da0ad);
     font-size: 12px;
 }
 
-.new-spy-timer-box {
+.spy-v2-live {
+    margin-left: auto;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(55,211,137,.10);
+    border: 1px solid rgba(55,211,137,.18);
+    color: #63e6a3;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.spy-v2-panel {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid rgba(255,255,255,.075);
+    border-radius: 20px;
+    background: rgba(255,255,255,.035);
+    box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+
+.spy-v2-panel-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 18px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.08);
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 900;
 }
 
-.new-spy-timer-box span {
-    font-size: 13px;
+.spy-v2-count {
+    min-width: 28px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(124,77,255,.13);
+    color: #b69dff;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+/* CHAT */
+
+.spy-v2-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.075);
+    border-radius: 22px;
+    background: rgba(255,255,255,.025);
+}
+
+.spy-v2-chat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.spy-v2-chat-head strong {
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.spy-v2-chat-head span {
+    color: var(--muted, #9da0ad);
+    font-size: 10px;
+}
+
+.spy-v2-messages {
+    height: 300px;
+    min-height: 180px;
+    overflow-y: auto;
+    padding: 8px 4px;
+    border-radius: 15px;
+    background: rgba(0,0,0,.16);
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+}
+
+.spy-v2-messages::-webkit-scrollbar {
+    width: 5px;
+}
+
+.spy-v2-messages::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.12);
+    border-radius: 99px;
+}
+
+.spy-v2-reply {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-left: 3px solid #8c6cff;
+    border-radius: 10px;
+    background: rgba(124,77,255,.08);
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
+}
+
+.spy-v2-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.spy-v2-input input {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    padding: 0 13px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    outline: none;
+    background: rgba(255,255,255,.045);
+    color: inherit;
+    font: inherit;
+}
+
+.spy-v2-input input:focus {
+    border-color: rgba(124,77,255,.55);
+}
+
+.spy-v2-input button {
+    flex: 0 0 auto;
+    min-width: 48px;
+    height: 46px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 14px;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #7655e8, #5637b4);
+    font-weight: 900;
+}
+
+.spy-v2-input button:active {
+    transform: scale(.96);
+}
+
+/* STATUS */
+
+.spy-v2-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 13px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.035);
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
+}
+
+/* PLAYERS */
+
+.spy-v2-players {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.spy-v2-player {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 15px;
+    background: rgba(255,255,255,.035);
+}
+
+.spy-v2-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: rgba(124,77,255,.13);
+    font-size: 16px;
+}
+
+.spy-v2-player-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.spy-v2-empty {
+    padding: 16px 8px;
+    color: var(--muted, #9da0ad);
+    text-align: center;
+    font-size: 12px;
+}
+
+/* LOBBY */
+
+.spy-v2-lobby-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.spy-v2-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.spy-v2-field label {
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
     font-weight: 700;
 }
 
-.new-spy-timer-box strong {
-    font-size: 25px;
-    letter-spacing: 1px;
+.spy-v2-field input {
+    width: 100%;
+    height: 46px;
+    padding: 0 13px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    outline: none;
+    background: rgba(255,255,255,.045);
+    color: inherit;
+    font: inherit;
 }
 
-.new-spy-card {
-    padding: 16px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.07);
+.spy-v2-time-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.spy-role-danger,
-.spy-role-citizen,
-.spy-result,
-.spy-voted {
-    text-align: center;
+.spy-v2-time-row input {
+    flex: 1;
+}
+
+.spy-v2-primary,
+.spy-v2-secondary {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 15px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 900;
+}
+
+.spy-v2-primary {
+    border: 0;
+    color: #fff;
+    background: linear-gradient(135deg, #7655e8, #5637b4);
+}
+
+.spy-v2-secondary {
+    border: 1px solid rgba(255,255,255,.08);
+    color: #ddd8ef;
+    background: rgba(255,255,255,.045);
+}
+
+.spy-v2-primary:active,
+.spy-v2-secondary:active {
+    transform: scale(.98);
+}
+
+.spy-v2-waiting {
     padding: 12px;
+    border-radius: 14px;
+    background: rgba(255,193,7,.06);
+    border: 1px solid rgba(255,193,7,.10);
+    color: #d9c77b;
+    font-size: 11px;
+    line-height: 1.8;
 }
 
-.spy-role-danger h3,
-.spy-role-citizen h3 {
-    margin: 7px 0;
+/* ROLE */
+
+.spy-v2-role {
+    text-align: center;
+    padding: 18px 12px;
 }
 
-.spy-role-danger {
-    color: #ff8a8a;
+.spy-v2-role-icon {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 10px;
+    display: grid;
+    place-items: center;
+    border-radius: 19px;
+    background: rgba(124,77,255,.12);
+    font-size: 29px;
 }
 
-.spy-role-citizen strong {
-    display: block;
-    margin-top: 8px;
-    font-size: 25px;
+.spy-v2-role h3 {
+    margin: 5px 0 8px;
+    font-size: 18px;
+    font-weight: 900;
 }
 
-.new-spy-player-list,
-.new-spy-vote-list {
+.spy-v2-role p {
+    margin: 0;
+    color: var(--muted, #9da0ad);
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.spy-v2-compact-players {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 12px;
+}
+
+.spy-v2-compact-player {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    color: #ddd;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+/* ACTIONS */
+
+.spy-v2-action-card {
+    padding: 14px;
+    border-radius: 17px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.035);
+}
+
+.spy-v2-action-card + .spy-v2-action-card {
+    margin-top: 9px;
+}
+
+.spy-v2-action-card h3 {
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+
+.spy-v2-action-card p {
+    margin: 0 0 11px;
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+/* GUESS */
+
+.spy-v2-guess-form {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.spy-v2-guess-form input {
+    width: 100%;
+    height: 46px;
+    padding: 0 13px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    outline: none;
+    background: rgba(255,255,255,.045);
+    color: inherit;
+    font: inherit;
+}
+
+.spy-v2-muted {
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
+    line-height: 1.8;
+}
+
+/* VOTING */
+
+.spy-v2-vote-card {
+    padding: 14px;
+    border-radius: 17px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.035);
+}
+
+.spy-v2-vote-note {
+    margin: 0 0 11px;
+    color: var(--muted, #9da0ad);
+    font-size: 11px;
+    line-height: 1.8;
+}
+
+.spy-v2-votes {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.new-spy-player {
+.spy-v2-vote {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 13px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px;
-    border-radius: 13px;
-    background: rgba(255,255,255,.04);
-}
-
-.new-spy-vote {
-    width: 100%;
-    min-height: 48px;
-    border: 0;
+    gap: 10px;
+    border: 1px solid rgba(255,255,255,.07);
     border-radius: 14px;
-    color: inherit;
-    background: rgba(255,255,255,.07);
     cursor: pointer;
-    font-weight: 800;
-}
-
-.new-spy-vote:active {
-    transform: scale(.98);
-}
-
-.spy-vote-hint {
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.new-spy-chat {
-    padding: 14px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(255,255,255,.08);
-}
-
-.new-spy-chat-title {
-    font-weight: 800;
-    margin-bottom: 10px;
-}
-
-.new-spy-messages {
-    height: 270px;
-    overflow-y: auto;
-    padding: 10px;
-    border-radius: 15px;
-    background: rgba(0,0,0,.18);
-}
-
-.new-spy-chat-input {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.new-spy-chat-input input {
-    flex: 1;
-    min-width: 0;
-    height: 46px;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 14px;
-    background: rgba(255,255,255,.055);
     color: inherit;
-    padding: 0 13px;
-    outline: none;
-}
-
-.new-spy-chat-input button {
-    min-width: 70px;
-    height: 46px;
-    border: 0;
-    border-radius: 14px;
-    color: white;
-    background: linear-gradient(
-        135deg,
-        #7c4dff,
-        #5e35b1
-    );
+    background: rgba(255,255,255,.045);
+    font: inherit;
     font-weight: 800;
 }
 
-@media (max-width: 480px) {
+.spy-v2-vote.selected {
+    border-color: rgba(124,77,255,.70);
+    background: rgba(124,77,255,.14);
+}
 
-    .new-spy-timer-box strong {
-        font-size: 22px;
+.spy-v2-vote-status {
+    color: var(--muted, #9da0ad);
+    font-size: 10px;
+}
+
+/* RESULT */
+
+.spy-v2-result {
+    text-align: center;
+    padding: 18px 12px;
+}
+
+.spy-v2-result-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 11px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    background: rgba(124,77,255,.12);
+    font-size: 32px;
+}
+
+.spy-v2-result h2 {
+    margin: 0 0 7px;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.spy-v2-result p {
+    margin: 0;
+    color: var(--muted, #9da0ad);
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.spy-v2-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 13px;
+}
+
+.spy-v2-final-votes {
+    padding: 11px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.04);
+    color: #ddd;
+    font-size: 11px;
+}
+
+.spy-v2-final-votes strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 17px;
+}
+
+.spy-v2-chat-empty {
+    padding: 30px 12px;
+    color: var(--muted, #9da0ad);
+    text-align: center;
+    font-size: 11px;
+}
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+    .spy-v2 {
+        gap: 11px;
     }
 
-    .new-spy-messages {
-        height: 240px;
+    .spy-v2-head {
+        padding: 14px;
+        border-radius: 19px;
     }
 
+    .spy-v2-head h2 {
+        font-size: 18px;
+    }
+
+    .spy-v2-panel {
+        padding: 13px;
+        border-radius: 18px;
+    }
+
+    .spy-v2-players {
+        grid-template-columns: 1fr;
+    }
+
+    .spy-v2-messages {
+        height: 250px;
+    }
+
+    .spy-v2-result-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .spy-v2-live {
+        display: none;
+    }
 }

@@ -193,6 +193,11 @@ def init_db():
             "ALTER TABLE chat_messages ADD COLUMN game_id TEXT DEFAULT NULL"
         )
 
+    if "reply_to" not in chat_columns:
+        conn.execute(
+            "ALTER TABLE chat_messages ADD COLUMN reply_to INTEGER DEFAULT NULL"
+        )
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS scenarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -285,199 +290,6 @@ chat_cache = []
 active_games = {}
 
 # =========================================================
-# SPY GAME ENGINE
-# =========================================================
-
-SPY_DEFAULT_WORDS = [
-    ("سینما", "فیلم"),
-    ("بیمارستان", "دکتر"),
-    ("فرودگاه", "هواپیما"),
-    ("رستوران", "غذا"),
-    ("مدرسه", "معلم"),
-    ("استخر", "شنا"),
-    ("کتابخانه", "کتاب"),
-    ("پارک", "تاب"),
-    ("هتل", "اتاق"),
-    ("فوتبال", "استادیوم"),
-    ("عروسی", "داماد"),
-    ("آشپزخانه", "اجاق"),
-    ("پلیس", "بازداشتگاه"),
-    ("ساحل", "دریا"),
-    ("باغ وحش", "شیر"),
-]
-
-
-def create_spy_game(game_id, players, host, discussion_seconds=120):
-    if len(players) < 3 or len(players) > 5:
-        raise ValueError("بازی جاسوس به ۳ تا ۵ بازیکن نیاز دارد.")
-
-    common_word, spy_hint = random.choice(SPY_DEFAULT_WORDS)
-    spy_username = random.choice(players)
-
-    player_states = {}
-
-    for username in players:
-        if username == spy_username:
-            player_states[username] = {
-                "username": username,
-                "role": "spy",
-                "word": None,
-                "hint": spy_hint,
-                "vote": None,
-            }
-        else:
-            player_states[username] = {
-                "username": username,
-                "role": "citizen",
-                "word": common_word,
-                "hint": None,
-                "vote": None,
-            }
-
-    active_games[game_id] = {
-        "id": game_id,
-        "game_type": "spy",
-        "host": host,
-        "players": players,
-        "phase": "discussion",
-        "started_at": time.time(),
-        "discussion_seconds": discussion_seconds,
-        "voting_seconds": 10,
-        "phase_ends_at": time.time() + 120,
-        "votes": {},
-        "vote_locked": False,
-        "result": None,
-        "spy_username": spy_username,
-        "common_word": common_word,
-        "spy_hint": spy_hint,
-        "player_states": player_states,
-    }
-
-    return active_games[game_id]
-
-
-def get_spy_private_state(game, username):
-    player = game.get("player_states", {}).get(username)
-
-    if not player:
-        return None
-
-    if player["role"] == "spy":
-        return {
-            "username": username,
-            "role": "spy",
-            "word": None,
-            "hint": player.get("hint"),
-        }
-
-    return {
-        "username": username,
-        "role": "citizen",
-        "word": player.get("word"),
-        "hint": None,
-    }
-
-
-def get_spy_public_state(game):
-    return {
-        "game_id": game["id"],
-        "game_type": "spy",
-        "phase": game["phase"],
-        "players": game["players"],
-        "phase_ends_at": game["phase_ends_at"],
-        "discussion_seconds": game["discussion_seconds"],
-        "voting_seconds": game["voting_seconds"],
-        "vote_locked": game["vote_locked"],
-        "result": game.get("result"),
-    }
-
-
-def start_spy_voting(game):
-    game["phase"] = "voting"
-    game["vote_locked"] = False
-    game["votes"] = {}
-    game["phase_ends_at"] = (
-        time.time() + game["voting_seconds"]
-    )
-
-
-def submit_spy_vote(game, voter, target):
-    if game["phase"] != "voting":
-        return False, "الان زمان رأی‌گیری نیست."
-
-    if game["vote_locked"]:
-        return False, "رأی‌گیری بسته شده است."
-
-    if voter not in game["players"]:
-        return False, "بازیکن معتبر نیست."
-
-    if target not in game["players"]:
-        return False, "هدف رأی معتبر نیست."
-
-    if voter == target:
-        return False, "نمی‌توانید به خودتان رأی بدهید."
-
-    game["votes"][voter] = target
-
-    return True, "رأی ثبت شد."
-
-
-def finish_spy_voting(game):
-    if game["vote_locked"]:
-        return game.get("result")
-
-    game["vote_locked"] = True
-
-    vote_counts = {}
-
-    for target in game["votes"].values():
-        vote_counts[target] = (
-            vote_counts.get(target, 0) + 1
-        )
-
-    max_votes = 0
-    eliminated = None
-    tied = False
-
-    for player in game["players"]:
-        count = vote_counts.get(player, 0)
-
-        if count > max_votes:
-            max_votes = count
-            eliminated = player
-            tied = False
-
-        elif count == max_votes and count > 0:
-            tied = True
-
-    if tied:
-        eliminated = None
-
-    spy_username = game["spy_username"]
-
-    if eliminated is None:
-        winner = "spy"
-    elif eliminated == spy_username:
-        winner = "citizens"
-    else:
-        winner = "spy"
-
-    game["phase"] = "finished"
-
-    game["result"] = {
-        "winner": winner,
-        "spy": spy_username,
-        "eliminated": eliminated,
-        "vote_counts": vote_counts,
-        "total_votes": len(game["votes"]),
-        "common_word": game["common_word"],
-        "spy_hint": game["spy_hint"],
-    }
-
-    return game["result"]
-
-
-
 # ========================================================= # HELPERS
 # =========================================================
 
@@ -646,6 +458,7 @@ def get_chat_history(game_id=None):
                 message,
                 is_image,
                 game_id,
+                reply_to,
                 created_at
             FROM chat_messages
             WHERE game_id = ?
@@ -664,6 +477,7 @@ def get_chat_history(game_id=None):
                 message,
                 is_image,
                 game_id,
+                reply_to,
                 created_at
             FROM chat_messages
             WHERE game_id IS NULL
@@ -683,6 +497,7 @@ def get_chat_history(game_id=None):
             "message": row["message"],
             "is_image": bool(row["is_image"]),
             "game_id": row["game_id"],
+            "reply_to": row["reply_to"],
             "created_at": row["created_at"]
         }
         for row in rows
@@ -696,9 +511,9 @@ def save_chat_message(
     username,
     message,
     is_image=False,
-    game_id=None
+    game_id=None,
+    reply_to=None
 ):
-
     player = get_player(username)
 
     display_name = (
@@ -723,16 +538,18 @@ def save_chat_message(
             display_name,
             message,
             is_image,
-            game_id
+            game_id,
+            reply_to
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             username,
             display_name,
             message,
             int(is_image),
-            game_id
+            game_id,
+            reply_to
         )
     )
 
@@ -748,6 +565,8 @@ def save_chat_message(
         "display_name": display_name,
         "message": message,
         "is_image": bool(is_image),
+        "game_id": game_id,
+        "reply_to": reply_to,
         "created_at": now()
     }
 
@@ -1720,454 +1539,6 @@ def socket_disconnect():
 
 
 # =========================================================
-# SPY PRIVATE ROLE EVENT
-# =========================================================
-
-def send_spy_private_role(game_id, username, sid=None):
-    game = active_games.get(game_id)
-
-    if not game:
-        return False
-
-    if game.get("game_type") != "spy":
-        return False
-
-    private_state = get_spy_private_state(
-        game,
-        username
-    )
-
-    if not private_state:
-        return False
-
-    target_sid = sid
-
-    if not target_sid:
-        for socket_id, user in user_sids.items():
-            if user == username:
-                target_sid = socket_id
-                break
-
-    if not target_sid:
-        return False
-
-    socketio.emit(
-        "spy_private_role",
-        private_state,
-        to=target_sid
-    )
-
-    return True
-
-
-# =========================
-# SPY LOBBY
-# =========================
-
-spy_lobby_players = []
-
-
-def get_spy_lobby_players():
-    return [
-        player_public(username)
-        for username in spy_lobby_players
-        if valid_username(username)
-    ]
-
-
-def broadcast_spy_lobby():
-    players = get_spy_lobby_players()
-
-    socketio.emit(
-        "spy_lobby_update",
-        {
-            "players": players,
-            "count": len(players),
-            "max_players": 5,
-            "min_players": 3,
-            "can_start": len(players) >= 3
-        },
-        room=MAIN_ROOM
-    )
-
-
-@socketio.on("spy_lobby_join")
-def spy_lobby_join(data):
-
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    if not valid_username(username):
-        return
-
-    player = get_player(username)
-
-    if not player:
-        return
-
-    if player.get("blocked"):
-        return
-
-    # حداکثر ۵ نفر
-    if (
-        username not in spy_lobby_players
-        and len(spy_lobby_players) >= 5
-    ):
-        socketio.emit(
-            "spy_lobby_error",
-            {
-                "error": "لابی پر است."
-            },
-            to=request.sid
-        )
-        return
-
-    if username not in spy_lobby_players:
-        spy_lobby_players.append(username)
-
-    broadcast_spy_lobby()
-
-
-@socketio.on("spy_lobby_leave")
-def spy_lobby_leave(data):
-
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    if username in spy_lobby_players:
-        spy_lobby_players.remove(username)
-
-    broadcast_spy_lobby()
-
-
-@socketio.on("spy_request_role")
-def spy_request_role(data):
-    data = data or {}
-
-    username = data.get(
-        "username",
-        ""
-    )
-
-    game_id = data.get(
-        "game_id",
-        ""
-    )
-
-    if not valid_username(username):
-        return
-
-    if not game_id:
-        return
-
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    if game.get("game_type") != "spy":
-        return
-
-    if username not in game.get(
-        "players",
-        []
-    ):
-        return
-
-    send_spy_private_role(
-        game_id,
-        username,
-        request.sid
-    )
-
-
-
-# =========================================================
-# SPY VOTING SOCKET EVENTS
-# =========================================================
-
-
-# =========================================================
-# SPY SERVER TIMER
-# =========================================================
-
-def spy_timer_loop(game_id):
-    while True:
-        time.sleep(0.5)
-
-        game = active_games.get(game_id)
-
-        if not game:
-            return
-
-        game_type = game.get("game_type")
-        phase = game.get("phase")
-
-        if game_type != "spy":
-            return
-
-        if phase == "finished":
-            return
-
-        now = time.time()
-        end_time = game.get(
-            "phase_ends_at",
-            0
-        )
-
-        if now < end_time:
-            continue
-
-        if phase == "discussion":
-            start_spy_voting(game)
-
-            socketio.emit(
-                "spy_voting_started",
-                get_spy_public_state(game),
-                room=f"game_{game_id}"
-            )
-
-            continue
-
-        if phase == "voting":
-            result = finish_spy_voting(game)
-
-            socketio.emit(
-                "spy_game_finished",
-                result,
-                room=f"game_{game_id}"
-            )
-
-            socketio.emit(
-                "spy_game_state",
-                get_spy_public_state(game),
-                room=f"game_{game_id}"
-            )
-
-            return
-
-
-def start_spy_server_timer(game_id):
-    socketio.start_background_task(
-        spy_timer_loop,
-        game_id
-    )
-
-
-def broadcast_spy_public_state(game_id):
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    socketio.emit(
-        "spy_game_state",
-        get_spy_public_state(game),
-        room=f"game_{game_id}"
-    )
-
-
-def finish_spy_game_if_needed(game_id):
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    if game.get("game_type") != "spy":
-        return
-
-    if game.get("phase") == "discussion":
-        if time.time() >= game.get(
-            "phase_ends_at",
-            0
-        ):
-            start_spy_voting(game)
-            broadcast_spy_public_state(game_id)
-
-    elif game.get("phase") == "voting":
-        if time.time() >= game.get(
-            "phase_ends_at",
-            0
-        ):
-            result = finish_spy_voting(game)
-
-            socketio.emit(
-                "spy_game_finished",
-                result,
-                room=f"game_{game_id}"
-            )
-
-            broadcast_spy_public_state(game_id)
-
-
-@socketio.on("spy_start_voting")
-def spy_start_voting(data):
-    data = data or {}
-
-    game_id = data.get(
-        "game_id",
-        ""
-    )
-
-    username = data.get(
-        "username",
-        ""
-    )
-
-    if not valid_username(username):
-        return
-
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    if game.get("game_type") != "spy":
-        return
-
-    if username not in game.get(
-        "players",
-        []
-    ):
-        return
-
-    if game.get("phase") != "discussion":
-        return
-
-    start_spy_voting(game)
-
-    socketio.emit(
-        "spy_voting_started",
-        get_spy_public_state(game),
-        room=MAIN_ROOM
-    )
-
-
-@socketio.on("spy_vote")
-def spy_vote(data):
-    data = data or {}
-
-    game_id = data.get(
-        "game_id",
-        ""
-    )
-
-    voter = data.get(
-        "voter",
-        ""
-    )
-
-    target = data.get(
-        "target",
-        ""
-    )
-
-    if not valid_username(voter):
-        return
-
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    if game.get("game_type") != "spy":
-        return
-
-    if game.get("phase") != "voting":
-        return
-
-    success, message = submit_spy_vote(
-        game,
-        voter,
-        target
-    )
-
-    socketio.emit(
-        "spy_vote_status",
-        {
-            "success": success,
-            "message": message,
-            "voter": voter
-        },
-        to=request.sid
-    )
-
-    if not success:
-        return
-
-    total_players = len(
-        game.get("players", [])
-    )
-
-    total_votes = len(
-        game.get("votes", {})
-    )
-
-    if total_votes >= total_players:
-        result = finish_spy_voting(game)
-
-        socketio.emit(
-            "spy_game_finished",
-            result,
-            room=MAIN_ROOM
-        )
-
-        broadcast_spy_public_state(game_id)
-
-
-@socketio.on("spy_get_state")
-def spy_get_state(data):
-    data = data or {}
-
-    game_id = data.get(
-        "game_id",
-        ""
-    )
-
-    username = data.get(
-        "username",
-        ""
-    )
-
-    if not valid_username(username):
-        return
-
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    if game.get("game_type") != "spy":
-        return
-
-    finish_spy_game_if_needed(
-        game_id
-    )
-
-    game = active_games.get(game_id)
-
-    if not game:
-        return
-
-    socketio.emit(
-        "spy_game_state",
-        get_spy_public_state(game),
-        to=request.sid
-    )
-
-    send_spy_private_role(
-        game_id,
-        username,
-        request.sid
-    )
-
-
 @socketio.on("game_join")
 def socket_join(data):
 
@@ -2670,435 +2041,36 @@ def internal_error(error):
 # ========================================================= # RUN
 # =========================================================
 
-if __name__ == "__main__":
 
+# ============================================================
+# SPY SOCKET ENGINE
+# ============================================================
+
+from spy_socket import register_spy_socket
+
+register_spy_socket(
+    socketio,
+    save_chat_callback=save_chat_message,
+    get_chat_history_callback=get_chat_history
+)
+
+
+# ============================================================
+# RUN
+# ============================================================
+
+if __name__ == "__main__":
     print("=" * 50)
     print("GAME ROOM BACKEND")
     print("=" * 50)
-    print(
-        f"Room: {MAIN_ROOM}"
-    )
-    print(
-        f"Port: {PORT}"
-    )
-    print(
-        f"Database: {DB_PATH}"
-    )
+    print(f"Room: {MAIN_ROOM}")
+    print(f"Port: {PORT}")
+    print(f"Database: {DB_PATH}")
     print("=" * 50)
 
-
-# ============================================================
-# NEW SPY GAME ENGINE
-# ============================================================
-
-from spy_game import (
-    create_game as new_spy_create_game,
-    get_game as new_spy_get_game,
-    add_player as new_spy_add_player,
-    start_game as new_spy_start_game,
-    vote as new_spy_vote,
-    get_state as new_spy_get_state,
-    tick_game as new_spy_tick_game,
-    finish_game as new_spy_finish_game,
-    remove_game as new_spy_remove_game,
-)
-
-NEW_SPY_GAMES = {}
-NEW_SPY_TIMER_RUNNING = set()
-
-
-def new_spy_game(game_id, host):
-    game = new_spy_create_game(game_id, host)
-    NEW_SPY_GAMES[game_id] = game
-    return game
-
-
-
-@socketio.on("new_spy_chat")
-def new_spy_chat(data=None):
-    data = data or {}
-
-    username = str(data.get("username", "")).strip()
-    game_id = str(data.get("game_id", "")).strip()
-    message = str(data.get("message", "")).strip()
-
-    if not username or not game_id or not message:
-        emit("new_spy_error", {"error": "پیام نامعتبر است."})
-        return
-
-    game = new_spy_get_game(game_id)
-
-    if not game or username not in game.players:
-        emit("new_spy_error", {"error": "شما عضو این بازی نیستید."})
-        return
-
-    if len(message) > 500:
-        emit("new_spy_error", {"error": "پیام خیلی طولانی است."})
-        return
-
-    try:
-        save_chat_message(username, message, False, game_id)
-    except Exception:
-        pass
-
-    payload = {
-        "username": username,
-        "message": message,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "game_id": game_id,
-    }
-
-    socketio.emit(
-        "new_spy_chat_message",
-        payload,
-        room=f"new_spy_{game_id}"
+    socketio.run(
+        app,
+        host=HOST,
+        port=PORT,
+        allow_unsafe_werkzeug=True
     )
-
-
-@socketio.on("new_spy_chat_history")
-def new_spy_chat_history(data=None):
-    data = data or {}
-
-    username = str(data.get("username", "")).strip()
-    game_id = str(data.get("game_id", "")).strip()
-
-    game = new_spy_get_game(game_id)
-
-    if not game or username not in game.players:
-        emit("new_spy_error", {"error": "شما عضو این بازی نیستید."})
-        return
-
-    try:
-        messages = get_chat_history(game_id)
-    except Exception:
-        messages = []
-
-    emit(
-        "new_spy_chat_history",
-        {
-            "messages": messages,
-            "game_id": game_id,
-        }
-    )
-
-
-@socketio.on("new_spy_create")
-def new_spy_create(data=None):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    if not username or not game_id:
-        emit("new_spy_error", {
-            "error": "اطلاعات بازی کامل نیست."
-        })
-        return
-
-    if username != "mehdi":
-        emit("new_spy_error", {
-            "error": "فقط مدیر می‌تواند بازی را بسازد."
-        })
-        return
-
-    game = new_spy_game(
-        game_id,
-        username
-    )
-
-    ok, message = game.add_player(username)
-
-    if not ok:
-        emit("new_spy_error", {
-            "error": message
-        })
-        return
-
-    emit("new_spy_created", {
-        "game_id": game_id,
-        "state": game.public_state(username)
-    })
-
-
-@socketio.on("new_spy_join")
-def new_spy_join(data=None):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    if not username or not game_id:
-        emit("new_spy_error", {
-            "error": "اطلاعات ورود کامل نیست."
-        })
-        return
-
-    game = new_spy_get_game(game_id)
-
-    if not game:
-        emit("new_spy_error", {
-            "error": "بازی پیدا نشد."
-        })
-        return
-
-    ok, message = new_spy_add_player(
-        game_id,
-        username
-    )
-
-    if not ok:
-        emit("new_spy_error", {
-            "error": message
-        })
-        return
-
-    join_room(
-        f"new_spy_{game_id}"
-    )
-
-    emit("new_spy_joined", {
-        "state": new_spy_get_state(
-            game_id,
-            username
-        )
-    })
-
-    socketio.emit(
-        "new_spy_state",
-        {
-            "state": new_spy_get_state(
-                game_id
-            )
-        },
-        room=f"new_spy_{game_id}"
-    )
-
-
-@socketio.on("new_spy_start")
-def new_spy_start(data=None):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    discussion_seconds = data.get(
-        "discussion_seconds",
-        120
-    )
-
-    game = new_spy_get_game(game_id)
-
-    if not game:
-        emit("new_spy_error", {
-            "error": "بازی پیدا نشد."
-        })
-        return
-
-    if username != game.host:
-        emit("new_spy_error", {
-            "error": "فقط مدیر می‌تواند بازی را شروع کند."
-        })
-        return
-
-    ok, message = new_spy_start_game(
-        game_id,
-        discussion_seconds
-    )
-
-    if not ok:
-        emit("new_spy_error", {
-            "error": message
-        })
-        return
-
-    socketio.emit(
-        "new_spy_started",
-        {
-            "state": new_spy_get_state(
-                game_id
-            )
-        },
-        room=f"new_spy_{game_id}"
-    )
-
-
-@socketio.on("new_spy_vote")
-def new_spy_vote_event(data=None):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    target = str(
-        data.get("target", "")
-    ).strip()
-
-    ok, message = new_spy_vote(
-        game_id,
-        username,
-        target
-    )
-
-    if not ok:
-        emit("new_spy_error", {
-            "error": message
-        })
-        return
-
-    socketio.emit(
-        "new_spy_vote_state",
-        {
-            "state": new_spy_get_state(
-                game_id
-            )
-        },
-        room=f"new_spy_{game_id}"
-    )
-
-
-@socketio.on("new_spy_state")
-def new_spy_state(data=None):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip()
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    state = new_spy_get_state(
-        game_id,
-        username
-    )
-
-    if state is None:
-        emit("new_spy_error", {
-            "error": "بازی پیدا نشد."
-        })
-        return
-
-    emit(
-        "new_spy_state",
-        {
-            "state": state
-        }
-    )
-
-
-def new_spy_timer_worker(game_id):
-    while True:
-        game = new_spy_get_game(game_id)
-
-        if not game:
-            break
-
-        phase = new_spy_tick_game(
-            game_id
-        )
-
-        state = new_spy_get_state(
-            game_id
-        )
-
-        socketio.emit(
-            "new_spy_tick",
-            {
-                "state": state
-            },
-            room=f"new_spy_{game_id}"
-        )
-
-        if phase == "finished":
-            socketio.emit(
-                "new_spy_finished",
-                {
-                    "state": state
-                },
-                room=f"new_spy_{game_id}"
-            )
-            NEW_SPY_TIMER_RUNNING.discard(game_id)
-            break
-
-        socketio.sleep(1)
-
-    NEW_SPY_TIMER_RUNNING.discard(game_id)
-
-
-@socketio.on("new_spy_timer_start")
-def new_spy_timer_start(data=None):
-    data = data or {}
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    game = new_spy_get_game(game_id)
-
-    if not game:
-        return
-
-    if game_id in NEW_SPY_TIMER_RUNNING:
-        return
-
-    NEW_SPY_TIMER_RUNNING.add(game_id)
-
-    socketio.start_background_task(
-        new_spy_timer_worker,
-        game_id
-    )
-
-
-@socketio.on("new_spy_finish")
-def new_spy_finish(data=None):
-    data = data or {}
-
-    game_id = str(
-        data.get("game_id", "")
-    ).strip()
-
-    result = new_spy_finish_game(
-        game_id
-    )
-
-    if result is None:
-        return
-
-    socketio.emit(
-        "new_spy_finished",
-        {
-            "state": new_spy_get_state(
-                game_id
-            )
-        },
-        room=f"new_spy_{game_id}"
-    )
-
-
-socketio.run(
-    app,
-    host=HOST,
-    port=PORT,
-    allow_unsafe_werkzeug=True
-)
