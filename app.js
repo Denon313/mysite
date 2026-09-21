@@ -4,6 +4,30 @@
 
 (() => {
     console.log("GAME_ROOM_APP_JS_LOADED");
+
+(function () {
+    const box = document.createElement("div");
+    box.id = "gameRoomDebug";
+    box.style.cssText =
+        "position:fixed;z-index:999999;top:10px;left:10px;right:10px;" +
+        "padding:14px;background:#111;color:#fff;border:2px solid #00ff88;" +
+        "border-radius:12px;font:14px monospace;direction:ltr;";
+
+    box.textContent = "JS LOADED — waiting for init...";
+    document.documentElement.appendChild(box);
+
+    window.addEventListener("error", function (e) {
+        box.textContent = "JS ERROR: " + (e.message || "unknown error") +
+            " | line: " + (e.lineno || "?");
+        box.style.borderColor = "#ff4444";
+    });
+
+    window.addEventListener("unhandledrejection", function (e) {
+        box.textContent = "PROMISE ERROR: " +
+            (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+        box.style.borderColor = "#ff4444";
+    });
+})();
     "use strict";
 
     /* =====================================================
