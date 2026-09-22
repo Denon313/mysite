@@ -1673,10 +1673,12 @@ VALID_GAMES = {
 
 @app.get("/api/game/spy-lobby-debug")
 def spy_lobby_debug():
+    state = spy_engine.lobby_state()
     return jsonify({
         "success": True,
-        "players": list(spy_lobby_players),
-        "count": len(spy_lobby_players),
+        "players": state.get("players", []),
+        "count": state.get("count", 0),
+        "host": state.get("host"),
         "connected_users": list(connected_users.keys())
     })
 
@@ -1715,137 +1717,6 @@ def _start_game_debug():
         return jsonify({
             "error": "بازی معتبر نیست."
         }), 400
-
-    # ========================================================
-    # SPY
-    # ========================================================
-
-    if game_type == "spy":
-        try:
-            discussion_seconds = int(
-                data.get("discussion_seconds", 120)
-            )
-        except (TypeError, ValueError):
-            discussion_seconds = 120
-
-        discussion_seconds = max(
-            10,
-            min(1800, discussion_seconds)
-        )
-
-        players = list(spy_lobby_players)
-
-        if len(players) < 3:
-            return jsonify({
-                "error": "برای شروع بازی جاسوس حداقل ۳ بازیکن لازم است."
-            }), 400
-
-        if len(players) > 5:
-            return jsonify({
-                "error": "حداکثر ۵ بازیکن می‌توانند در بازی جاسوس باشند."
-            }), 400
-
-        # نفر اول لابی = میزبان
-        lobby_host = players[0]
-
-        is_admin = (
-            PLAYERS.get(username, {}).get("role")
-            == "admin"
-        )
-
-        if username != lobby_host and not is_admin:
-            return jsonify({
-                "error": "فقط میزبان لابی یا مدیر می‌تواند بازی را شروع کند."
-            }), 403
-
-        game_id = uuid.uuid4().hex
-
-        print(
-            "SPY START:",
-            "game_id=", game_id,
-            "host=", lobby_host,
-            "requester=", username,
-            "players=", players,
-            "discussion=", discussion_seconds,
-            flush=True
-        )
-
-        try:
-            game = create_spy_game(
-                game_id,
-                players,
-                lobby_host,
-                discussion_seconds
-            )
-
-            active_games[game_id] = game
-
-            start_spy_server_timer(game_id)
-
-        except Exception as error:
-            print(
-                "SPY START ERROR:",
-                repr(error),
-                flush=True
-            )
-            traceback.print_exc()
-
-            active_games.pop(game_id, None)
-
-            return jsonify({
-                "error": "خطا در ساخت بازی جاسوس.",
-                "exception": repr(error)
-            }), 500
-
-        # انتقال وضعیت اتاق اصلی به playing
-        conn = get_db()
-
-        conn.execute(
-            """
-            UPDATE rooms
-            SET
-                game_type = ?,
-                status = 'playing',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """,
-            (
-                game_type,
-                MAIN_ROOM
-            )
-        )
-
-        conn.commit()
-        conn.close()
-
-        add_activity(
-            "🎮",
-            "بازی جدید شروع شد",
-            "spy"
-        )
-
-        # لابی اصلی بعد از شروع بازی خالی می‌شود
-        spy_lobby_players.clear()
-
-        broadcast_spy_lobby()
-
-        socketio.emit(
-            "game_started",
-            {
-                "game_id": game_id,
-                "game_type": game_type,
-                "players": players
-            },
-            room=MAIN_ROOM
-        )
-
-        return jsonify({
-            "success": True,
-            "game_id": game_id,
-            "game_type": game_type,
-            "host": lobby_host,
-            "players": players
-        })
 
     # ========================================================
     # MYSTERY / FORBIDDEN
@@ -1975,27 +1846,15 @@ def socket_disconnect():
 
     if not still_connected:
 
-        if username in spy_lobby_players:
-            spy_lobby_players.remove(username)
-            broadcast_spy_lobby()
-
-        # بازیکن را در تمام بازی‌های فعال Spy قطع‌شده علامت بزن.
-        for game_id, game in list(active_games.items()):
-            try:
-                if hasattr(game, "players"):
-                    with game.lock:
-                        if username in game.players:
-                            disconnect_spy_player(
-                                game_id,
-                                username,
-                            )
-            except Exception as exc:
-                print(
-                    "Spy disconnect error:",
-                    game_id,
-                    username,
-                    exc,
-                )
+        # اطلاع به موتور جدید Spy برای مدیریت disconnect/reconnect
+        try:
+            disconnect_spy_user(username)
+        except Exception as exc:
+            print(
+                "Spy disconnect error:",
+                username,
+                exc,
+            )
 
         if username in connected_users:
             connected_users.pop(
@@ -2434,72 +2293,6 @@ def socket_game_open(data):
         return
 
     # ========================================================
-    # SPY — بازی جدید و Server Authoritative
-    # ========================================================
-
-    if game_type == "spy":
-
-        if not game_id:
-            game_id = "spy-main-room"
-
-        spy_game = active_games.get(game_id)
-
-        if spy_game is None:
-            emit(
-                "game_state_update",
-                {
-                    "game_type": "spy",
-                    "game_id": game_id,
-                    "game_state": {
-                        "phase": "waiting",
-                        "message": "بازی در حال آماده‌سازی است."
-                    }
-                }
-            )
-            return
-
-        if not hasattr(spy_game, "players"):
-            emit(
-                "game_error",
-                {
-                    "error": "ساختار بازی Spy معتبر نیست."
-                }
-            )
-            return
-
-        with spy_game.lock:
-            if username not in spy_game.players:
-                emit(
-                    "game_error",
-                    {
-                        "error": "شما عضو این بازی نیستید."
-                    }
-                )
-                return
-
-            if spy_game.phase == "finished":
-                emit(
-                    "game_error",
-                    {
-                        "error": "این بازی تمام شده است."
-                    }
-                )
-                return
-
-        join_room(f"spy:{game_id}")
-
-        emit(
-            "game_room_joined",
-            {
-                "game_id": game_id,
-                "game_type": "spy",
-                "messages": get_chat_history(game_id)
-            }
-        )
-
-        return
-
-    # ========================================================
     # LEGACY — Mystery / Forbidden
     # ========================================================
 
@@ -2620,10 +2413,8 @@ def internal_error(error):
 
 from spy_game import (
     register_spy_socket,
-    spy_lobby_players,
-    create_spy_game,
-    start_spy_server_timer,
-    broadcast_spy_lobby,
+    disconnect_spy_user,
+    spy_engine,
 )
 
 def get_socket_username():
