@@ -1903,6 +1903,136 @@ const SpyGameUI = {
                 this.joinLobby();
             }
         });
+
+        socket.on("spy_lobby", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.lobbyJoined = true;
+            this.gameJoined = false;
+            this.gameId = null;
+            this.phase = "lobby";
+
+            this.renderLobby(data || {});
+        });
+
+        socket.on("spy_prepared", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.gameId = data?.game_id || this.gameId;
+            this.phase = "duration_selection";
+
+            if (data?.ok === false) return;
+
+            this.renderDuration();
+        });
+
+        socket.on("spy_joined", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.gameJoined = true;
+            this.lobbyJoined = false;
+            this.gameId = data?.game_id || this.gameId;
+
+            if (data?.state) {
+                this.state = data.state;
+                this.renderGame(data.state);
+            }
+        });
+
+        socket.on("spy_state", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.state = data || this.state;
+
+            if (data?.game_id) {
+                this.gameId = data.game_id;
+            }
+
+            this.renderGame(data);
+        });
+
+        socket.on("spy_started", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.gameId = data?.game_id || this.gameId;
+
+            if (data?.state) {
+                this.state = data.state;
+                this.renderGame(data.state);
+            }
+        });
+
+        socket.on("spy_tick", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            const timer = this.q("#spyZeroTimer");
+
+            if (timer && typeof data?.remaining === "number") {
+                this.updateTimer({ remaining: data.remaining });
+            }
+        });
+
+        socket.on("spy_vote_saved", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            if (data?.state) {
+                this.state = data.state;
+                this.renderGame(data.state);
+            }
+        });
+
+        socket.on("spy_guess_result", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.state = data?.state || data || this.state;
+            this.renderResult(this.state);
+        });
+
+        socket.on("spy_finished", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.state = data?.state || data || this.state;
+            this.renderResult(this.state);
+        });
+
+        socket.on("spy_replay_ready", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.gameId = data?.game_id || this.gameId;
+            this.state = data?.state || data || this.state;
+            this.renderDuration();
+        });
+
+        socket.on("spy_chat_history", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.handleChatHistory(data);
+        });
+
+        socket.on("spy_chat", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.handleChatMessage(data);
+        });
+
+        socket.on("spy_error", (data) => {
+            if (state.currentGame?.type !== "spy") return;
+
+            const message =
+                data?.message ||
+                data?.error ||
+                "خطایی در بازی جاسوس رخ داد.";
+
+            alert(message);
+        });
+
+        socket.on("spy_left", () => {
+            if (state.currentGame?.type !== "spy") return;
+
+            this.gameJoined = false;
+            this.lobbyJoined = false;
+            this.gameId = null;
+        });
     },
 
     joinLobby() {
