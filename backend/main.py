@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from spy_word_bank import SPY_WORD_BANK
 import uuid
 import time
 import traceback
@@ -257,6 +258,39 @@ def init_db():
                 ON DELETE CASCADE
         )
     """)
+
+    # ========================================================
+    # SEED SPY WORD BANK
+    # ========================================================
+
+    spy_word_count = conn.execute(
+        "SELECT COUNT(*) FROM spy_words"
+    ).fetchone()[0]
+
+    if spy_word_count == 0:
+        for item in SPY_WORD_BANK:
+            cursor = conn.execute(
+                """
+                INSERT INTO spy_words (word, enabled)
+                VALUES (?, ?)
+                """,
+                (
+                    item["word"],
+                    item.get("enabled", 1)
+                )
+            )
+
+            word_id = cursor.lastrowid
+
+            for alias in item.get("aliases", []):
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO spy_word_aliases
+                    (word_id, alias)
+                    VALUES (?, ?)
+                    """,
+                    (word_id, alias)
+                )
 
     for username, player in PLAYERS.items():
 
