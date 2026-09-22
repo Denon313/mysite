@@ -781,6 +781,20 @@ def game_login():
         ""
     )
 
+    # =========================================================
+    # TEMPORARY MAINTENANCE MODE
+    # Only Mehdi can enter while maintenance is active.
+    # =========================================================
+
+    if username.lower() != "mehdi":
+
+        return jsonify({
+            "success": False,
+            "maintenance": True,
+            "error":
+                "سایت موقتاً در حال بروزرسانی است."
+        }), 503
+
     if not valid_username(username):
 
         return jsonify({
