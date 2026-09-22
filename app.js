@@ -1100,19 +1100,6 @@ console.log("GAME_ROOM_APP_JS_LOADED");
                     }
                 );
 
-                if (
-                    state.currentGame?.type === "spy-lobby" &&
-                    state.currentUser?.username
-                ) {
-                    socket.emit(
-                        "spy_lobby_join",
-                        {
-                            username:
-                                state.currentUser.username
-                        }
-                    );
-                }
-
                 renderMembers();
 
                 addActivity(
@@ -2103,7 +2090,7 @@ const SpyGameUI = {
             `;
 
         const canStart =
-            host === me &&
+            me === "mehdi" &&
             players.length >= 1 &&
             players.length <= 5;
 
@@ -2282,7 +2269,7 @@ const SpyGameUI = {
                     "spy_start",
                     {
                         game_id: this.gameId,
-                        seconds
+                        duration_seconds: seconds
                     }
                 );
             }
