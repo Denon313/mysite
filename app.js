@@ -2949,6 +2949,7 @@ function setupSpySocketListeners() {
 
     state.socket.on("spy_error", (data) => {
         toast(
+            data?.message ||
             data?.error ||
             "عملیات جاسوس انجام نشد."
         );
