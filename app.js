@@ -1965,11 +1965,12 @@ const SpyGameUI = {
         socket.on("spy_tick", (data) => {
             if (state.currentGame?.type !== "spy") return;
 
-            const timer = this.q("#spyZeroTimer");
-
-            if (timer && typeof data?.remaining === "number") {
-                this.updateTimer({ remaining: data.remaining });
-            }
+            this.handleTick({
+                ...(data || {}),
+                remaining_seconds: Number(
+                    data?.remaining_seconds ?? data?.remaining ?? 0
+                )
+            });
         });
 
         socket.on("spy_vote_saved", (data) => {
@@ -1999,7 +2000,24 @@ const SpyGameUI = {
             if (state.currentGame?.type !== "spy") return;
 
             this.gameId = data?.game_id || this.gameId;
-            this.state = data?.state || data || this.state;
+
+            this.roleRevealGameId = null;
+
+            clearTimeout(this.roleRevealTimer);
+
+            this.state = {
+                ...(this.state || {}),
+                ...(data?.state || {}),
+                game_id: this.gameId,
+                phase: "duration_selection",
+                my_role: null,
+                role: null,
+                secret_word: null,
+                result: null
+            };
+
+            this.phase = "duration_selection";
+
             this.renderDuration();
         });
 
@@ -2294,11 +2312,70 @@ const SpyGameUI = {
             return;
         }
 
+        if (this.phase === "discussion") {
+            const role = gameState?.my_role ?? gameState?.role;
+
+            if (
+                this.roleRevealGameId !== gameState?.game_id
+            ) {
+                this.roleRevealGameId = gameState?.game_id;
+                this.renderRoleReveal(gameState);
+
+                clearTimeout(this.roleRevealTimer);
+
+                this.roleRevealTimer = setTimeout(() => {
+                    if (
+                        this.state?.game_id === gameState?.game_id &&
+                        this.state?.phase === "discussion"
+                    ) {
+                        this.renderDiscussion(this.state);
+                    }
+                }, 3000);
+
+                return;
+            }
+        }
+
         this.renderDiscussion(gameState);
     },
 
+    renderRoleReveal(data) {
+        const role = data?.my_role ?? data?.role;
+        const word = data?.secret_word;
+
+        this.setContent(`
+            <div class="spy-zero-screen spy-zero-centered">
+                <div class="spy-zero-role-reveal">
+                    <span class="spy-zero-label">SPY GAME</span>
+
+                    <div class="spy-zero-reveal-icon">
+                        ${role === "spy" ? "🕵️" : "👤"}
+                    </div>
+
+                    <h2>
+                        ${role === "spy" ? "تو جاسوسی!" : "تو شهروندی!"}
+                    </h2>
+
+                    <div class="spy-zero-reveal-word">
+                        <span>کلمه</span>
+                        <strong>
+                            ${
+                                role === "spy"
+                                    ? "مخفی"
+                                    : this.escape(word || "—")
+                            }
+                        </strong>
+                    </div>
+
+                    <p>این اطلاعات فقط برای توست.</p>
+                    <small>تا چند لحظه دیگر وارد اتاق بحث می‌شوی...</small>
+                </div>
+            </div>
+        `);
+    },
+
     renderDiscussion(data) {
-        const role = data?.role;
+        const role = data?.my_role ?? data?.role;
         const word = data?.secret_word;
         const players = Array.isArray(data?.players)
             ? data.players
@@ -2621,7 +2698,16 @@ const SpyGameUI = {
 
         this.q("[data-spy-replay]")?.addEventListener(
             "click",
-            () => {
+            event => {
+                const button = event.currentTarget;
+
+                if (button.dataset.replaying === "1") {
+                    return;
+                }
+
+                button.dataset.replaying = "1";
+                button.disabled = true;
+
                 state.socket?.emit(
                     "spy_replay",
                     {

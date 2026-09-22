@@ -1272,13 +1272,16 @@ class SpyEngine:
 
             room.discussion_seconds = 120
 
+            # Stop any timer thread from the previous round.
             room.timer_stop = True
+            room.timer_thread = None
 
         self.emit_state(game_id)
 
         return {
             "ok": True,
-            "game_id": game_id
+            "game_id": game_id,
+            "phase": "duration_selection"
         }
 
     # =========================================================
