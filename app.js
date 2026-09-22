@@ -3,7 +3,63 @@
    ========================================================= */
 
 (() => {
-    console.log("GAME_ROOM_APP_JS_LOADED");
+    
+(function () {
+    const box = document.createElement("div");
+    box.id = "gameRoomDebug";
+    box.style.cssText = `
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        z-index: 999999;
+        background: #160b0b;
+        color: #ffffff;
+        border: 2px solid #ff4444;
+        border-radius: 12px;
+        padding: 12px;
+        font: 13px monospace;
+        line-height: 1.5;
+        direction: ltr;
+        white-space: pre-wrap;
+        word-break: break-word;
+        box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    `;
+    box.textContent = "DEBUG: JS LOADED";
+    document.documentElement.appendChild(box);
+
+    window.addEventListener("error", function (e) {
+        box.textContent =
+            "JS ERROR\n" +
+            "Message: " + (e.message || "unknown") + "\n" +
+            "File: " + (e.filename || "unknown") + "\n" +
+            "Line: " + (e.lineno || "?") +
+            " | Column: " + (e.colno || "?");
+    });
+
+    window.addEventListener("unhandledrejection", function (e) {
+        const reason = e.reason;
+        box.textContent =
+            "PROMISE ERROR\n" +
+            (reason && reason.stack
+                ? reason.stack
+                : String(reason || "unknown"));
+    });
+
+    window.addEventListener("click", function (e) {
+        const el = e.target.closest("#spyV2Start");
+        if (!el) return;
+
+        box.textContent =
+            "SPY START CLICK DETECTED\n" +
+            "disabled: " + el.disabled + "\n" +
+            "connected: " + !!window.__gameRoomSocketConnected;
+    }, true);
+
+    window.__gameRoomDebugBox = box;
+})();
+
+console.log("GAME_ROOM_APP_JS_LOADED");
 
 (function () {
     const box = document.createElement("div");
@@ -2257,6 +2313,24 @@ const SpyGameUI = {
         `;
 
         $("#spyV2Start")?.addEventListener("click", () => {
+            const debug = window.__gameRoomDebugBox;
+
+            if (debug) {
+                debug.textContent =
+                    "SPY START CLICK\n" +
+                    "socket exists: " + !!state.socket + "\n" +
+                    "socket connected: " + !!state.socket?.connected + "\n" +
+                    "game id: " + String(this.gameId) + "\n" +
+                    "username: " + String(state.currentUser?.username || "");
+            }
+
+            console.log("SPY_START_CLICK", {
+                socket: !!state.socket,
+                connected: !!state.socket?.connected,
+                gameId: this.gameId,
+                username: state.currentUser?.username
+            });
+
             const input = $("#spyV2Discussion");
             let seconds = Number(input?.value || 120);
 
@@ -2265,8 +2339,17 @@ const SpyGameUI = {
             seconds = Math.max(10, Math.min(1800, Math.floor(seconds)));
 
             if (!state.socket?.connected) {
+                if (debug) {
+                    debug.textContent += "\n\n❌ SOCKET NOT CONNECTED";
+                }
+
                 toast("اتصال به سرور برقرار نیست.");
                 return;
+            }
+
+            if (debug) {
+                debug.textContent +=
+                    "\n\n📤 EMITTING spy_start...";
             }
 
             state.socket.emit("spy_start", {
@@ -2274,6 +2357,8 @@ const SpyGameUI = {
                 username: state.currentUser.username,
                 discussion_seconds: seconds
             });
+
+            console.log("SPY_START_EMITTED");
         });
     },
 
