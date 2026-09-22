@@ -1811,564 +1811,474 @@ console.log("GAME_ROOM_APP_JS_LOADED");
     
 
 
-function openSpyLobby() {
-    if (!state.currentUser?.username) {
-        toast("ابتدا وارد حساب کاربری شو.");
-        return;
-    }
-
-    setupSpySocketListeners();
-    SpyGameUI.open("spy-main-room");
-}
-
-function openGame(gameType, serverData = null) {
-    const game = CONFIG.GAMES[gameType];
-    if (!game) {
-        toast("این بازی پیدا نشد.");
-        return;
-    }
-
-    state.currentGame = {
-        type: gameType,
-        data: serverData,
-        gameId: serverData?.game_id || serverData?.id || null,
-        spyRole: null,
-        spyState: null,
-        spyResult: null
-    };
-
-    const content = $("#gameContent");
-    if (!content) return;
-
-    content.innerHTML = "";
-
-    if (gameType === "spy") {
-        SpyGameUI.open(state.currentGame.gameId || "spy-main-room");
-    } else {
-        const header = document.createElement("div");
-        header.style.textAlign = "center";
-        header.style.padding = "30px 10px 20px";
-
-        const icon = document.createElement("div");
-        icon.style.fontSize = "54px";
-        icon.textContent = game.emoji;
-
-        const title = document.createElement("h2");
-        title.textContent = game.title;
-        title.style.marginTop = "12px";
-
-        const description = document.createElement("p");
-        description.style.marginTop = "8px";
-        description.style.color = "var(--muted)";
-        description.style.fontSize = "11px";
-        description.textContent = getGameDescription(gameType);
-
-        header.appendChild(icon);
-        header.appendChild(title);
-        header.appendChild(description);
-        content.appendChild(header);
-
-        const status = document.createElement("div");
-        status.className = "system-message";
-        status.textContent = "در حال اتصال به اتاق بازی...";
-        content.appendChild(status);
-    }
-
-    show($("#gameModal"));
-
-    if (state.socket?.connected) {
-        state.socket.emit("game_open", {
-            username: state.currentUser?.username,
-            game_type: gameType,
-            game_id: state.currentGame.gameId
-        });
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-function getGameDescription(gameType) {
-
-        switch (gameType) {
-
-            case "spy":
-                return "سرنخ بده، شک کن و جاسوس رو پیدا کن!";
-
-            case "mystery":
-                return "با هم سرنخ‌ها رو بررسی کنید و پرونده رو حل کنید.";
-
-            case "forbidden":
-                return "کلمه رو توضیح بده، بدون اینکه کلمات ممنوعه رو بگی.";
-
-            default:
-                return "بازی آماده می‌شود.";
-        }
-    }
-
-
-    function updateCurrentGame(data) {
-
-        if (
-            !state.currentGame ||
-            !data
-        ) {
-            return;
-        }
-
-        state.currentGame.data =
-            data;
-
-        /*
-         * موتور کامل هر سه بازی در Backend
-         * کنترل خواهد شد.
-         *
-         * این قسمت نقطه ورود UI بازی است.
-         */
-
-        renderGameState(data);
-    }
-
-
-    function renderGameState(data) {
-
-        const content =
-            $("#gameContent");
-
-        if (!content) {
-            return;
-        }
-
-        if (!data.game_state) {
-            return;
-        }
-
-        const stateData =
-            data.game_state;
-
-        const info =
-            document.createElement("div");
-
-        info.className =
-            "system-message";
-
-        if (stateData.phase) {
-
-            info.textContent =
-                `مرحله بازی: ${stateData.phase}`;
-
-        } else {
-
-            info.textContent =
-                "وضعیت بازی به‌روزرسانی شد.";
-        }
-
-        content.appendChild(info);
-    }
-
-
-    
-
-
-    
-
-
-    
-
-
-    
-
-
-    
 /* ============================================================
-   SPY GAME — SINGLE UNIFIED FRONTEND
+   SPY GAME - SINGLE CLEAN UI
    ============================================================ */
 
 const SpyGameUI = {
     gameId: null,
-    selectedVote: null,
     replyTo: null,
-    guessOpen: false,
+    selectedVote: null,
+    messages: [],
     lastPhase: null,
+    boundSocket: null,
 
-    open(gameId) {
+    open(gameId = "spy-main-room") {
         this.gameId = gameId || "spy-main-room";
-        this.selectedVote = null;
         this.replyTo = null;
-        this.guessOpen = false;
+        this.selectedVote = null;
+        this.messages = [];
         this.lastPhase = null;
 
         state.currentGame = {
             type: "spy",
             gameId: this.gameId,
-            data: null,
-            spyRole: null,
-            spyState: null,
-            spyResult: null
+            data: null
         };
 
-        const content = $("#gameContent");
-        if (!content) return;
+        this.render();
+        this.bind();
 
-        content.innerHTML = `
+        this.ensureSocket();
+
+        return true;
+    },
+
+    ensureSocket() {
+        if (!state.currentUser) {
+            toast("ابتدا وارد حساب شو.");
+            return;
+        }
+
+        if (
+            !state.socket ||
+            !state.socket.connected
+        ) {
+            if (
+                typeof connectSocket === "function"
+            ) {
+                connectSocket();
+            }
+            return;
+        }
+
+        this.enterRoom();
+    },
+
+    enterRoom() {
+        if (
+            !state.socket ||
+            !state.socket.connected ||
+            !state.currentUser
+        ) {
+            return;
+        }
+
+        const username =
+            state.currentUser.username;
+
+        state.socket.emit(
+            "spy_create",
+            {
+                game_id: this.gameId,
+                username
+            }
+        );
+
+        state.socket.emit(
+            "spy_join",
+            {
+                game_id: this.gameId,
+                username
+            }
+        );
+
+        state.socket.emit(
+            "spy_join_chat",
+            {
+                game_id: this.gameId,
+                username
+            }
+        );
+
+        state.socket.emit(
+            "spy_chat_history",
+            {
+                game_id: this.gameId
+            }
+        );
+
+        state.socket.emit(
+            "spy_state",
+            {
+                game_id: this.gameId,
+                username
+            }
+        );
+    },
+
+    render() {
+        const modal = $("#gameModal");
+
+        if (!modal) {
+            return;
+        }
+
+        modal.innerHTML = `
             <div class="spy-v2">
-                <div class="spy-v2-head">
+                <div class="spy-v2-header">
                     <div>
-                        <div class="spy-v2-kicker">GAME ROOM • SPY</div>
-                        <h2>🕵️ جاسوس</h2>
-                        <p>بحث کن، حدس بزن، رأی بده.</p>
+                        <div class="spy-v2-title">
+                            🕵️ بازی جاسوس
+                        </div>
+                        <div id="spyStatus"
+                             class="spy-v2-subtitle">
+                            در حال اتصال...
+                        </div>
                     </div>
-                    <div class="spy-v2-live">
-                        <span></span>
-                        آنلاین
-                    </div>
+
+                    <button
+                        type="button"
+                        id="spyClose"
+                        class="spy-v2-close"
+                    >×</button>
                 </div>
 
-                <div id="spyV2Lobby" class="spy-v2-panel"></div>
-                <div id="spyV2Role" class="spy-v2-panel"></div>
-                <div id="spyV2Status" class="spy-v2-panel"></div>
-                <div id="spyV2Players" class="spy-v2-panel"></div>
-                <div id="spyV2Voting" class="spy-v2-panel"></div>
-                <div id="spyV2Guess" class="spy-v2-panel"></div>
-                <div id="spyV2Result" class="spy-v2-panel"></div>
+                <div id="spyLobby"
+                     class="spy-v2-panel"></div>
 
-                <div class="spy-v2-chat spy-v2-panel">
+                <div id="spyRole"
+                     class="spy-v2-panel"></div>
+
+                <div id="spyTimer"
+                     class="spy-v2-panel"></div>
+
+                <div id="spyPlayers"
+                     class="spy-v2-panel"></div>
+
+                <div id="spyVoting"
+                     class="spy-v2-panel"></div>
+
+                <div id="spyGuess"
+                     class="spy-v2-panel"></div>
+
+                <div id="spyResult"
+                     class="spy-v2-panel"></div>
+
+                <div class="spy-v2-chat">
                     <div class="spy-v2-chat-head">
                         <div>
-                            <strong>💬 چت بازی</strong>
-                            <small>گفت‌وگو فقط بین بازیکنان همین بازی</small>
+                            <strong>💬 گفت‌وگوی بازی</strong>
+                            <span id="spyNewMessage"
+                                  hidden>
+                                پیام جدید
+                            </span>
                         </div>
-                        <button type="button" id="spyV2NewMessage">پیام جدید</button>
                     </div>
 
-                    <div id="spyV2Messages" class="spy-v2-messages"></div>
+                    <div
+                        id="spyMessages"
+                        class="spy-v2-messages"
+                    ></div>
 
-                    <div id="spyV2Reply" class="spy-v2-reply" hidden>
+                    <div
+                        id="spyReply"
+                        class="spy-v2-reply"
+                        hidden
+                    >
                         <div>
-                            <small>در حال پاسخ به</small>
-                            <strong id="spyV2ReplyText"></strong>
+                            <small>در پاسخ به</small>
+                            <strong id="spyReplyText"></strong>
                         </div>
-                        <button type="button" id="spyV2CancelReply">×</button>
+
+                        <button
+                            type="button"
+                            id="spyCancelReply"
+                        >×</button>
                     </div>
 
-                    <div class="spy-v2-input">
+                    <div class="spy-v2-input-row">
                         <input
-                            id="spyV2Input"
+                            id="spyInput"
                             type="text"
-                            maxlength="500"
+                            maxlength="1000"
                             autocomplete="off"
                             placeholder="پیامت رو بنویس..."
                         >
-                        <button type="button" id="spyV2Send">ارسال</button>
+
+                        <button
+                            type="button"
+                            id="spySend"
+                            class="spy-v2-primary"
+                        >ارسال</button>
                     </div>
                 </div>
             </div>
         `;
 
-        this.bind();
-        this.renderLobby({
-            players: [],
-            count: 0,
-            min_players: 3,
-            max_players: 5,
-            phase: "lobby"
-        });
-
-        if (state.socket?.connected) {
-            state.socket.emit("spy_create", {
-                game_id: this.gameId,
-                username: state.currentUser.username
-            });
-
-            state.socket.emit("spy_join", {
-                game_id: this.gameId,
-                username: state.currentUser.username
-            });
-
-            state.socket.emit("spy_join_chat", {
-                game_id: this.gameId,
-                username: state.currentUser.username
-            });
-
-            state.socket.emit("spy_chat_history", {
-                game_id: this.gameId
-            });
-
-            state.socket.emit("spy_state", {
-                game_id: this.gameId,
-                username: state.currentUser.username
-            });
-        } else {
-            this.setStatus("اتصال به سرور برقرار نیست.");
-        }
+        show(modal);
     },
 
     bind() {
-        const input = $("#spyV2Input");
-        const send = $("#spyV2Send");
-        const cancel = $("#spyV2CancelReply");
-        const newMessage = $("#spyV2NewMessage");
+        $("#spyClose")?.addEventListener(
+            "click",
+            () => this.close()
+        );
 
-        send?.addEventListener("click", () => this.sendChat());
+        $("#spySend")?.addEventListener(
+            "click",
+            () => this.sendChat()
+        );
 
-        input?.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                this.sendChat();
+        $("#spyInput")?.addEventListener(
+            "keydown",
+            (event) => {
+                if (
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                ) {
+                    event.preventDefault();
+                    this.sendChat();
+                }
             }
-        });
+        );
 
-        cancel?.addEventListener("click", () => {
-            this.replyTo = null;
-            this.renderReply();
-        });
-
-        newMessage?.addEventListener("click", () => {
-            const box = $("#spyV2Messages");
-            if (box) {
-                box.scrollTop = box.scrollHeight;
-                box.classList.remove("has-new");
+        $("#spyCancelReply")?.addEventListener(
+            "click",
+            () => {
+                this.replyTo = null;
+                this.renderReply();
             }
-        });
-    },
+        );
 
-    setStatus(text, timer = null) {
-        const box = $("#spyV2Status");
-        if (!box) return;
+        $("#spyNewMessage")?.addEventListener(
+            "click",
+            () => {
+                const box = $("#spyMessages");
 
-        box.innerHTML = `
-            <div class="spy-v2-status-row">
-                <span>${escapeHtml(text || "")}</span>
-                ${timer !== null ? `<strong>${escapeHtml(String(timer))}</strong>` : ""}
-            </div>
-        `;
+                if (box) {
+                    box.scrollTop =
+                        box.scrollHeight;
+                    box.classList.remove(
+                        "has-new"
+                    );
+                }
+
+                hide($("#spyNewMessage"));
+            }
+        );
     },
 
     renderLobby(data) {
-        const box = $("#spyV2Lobby");
+        const box = $("#spyLobby");
+
         if (!box) return;
 
-        const players = Array.isArray(data?.players)
-            ? data.players
-            : [];
+        const players =
+            Array.isArray(data.players)
+                ? data.players
+                : [];
 
-        const count = Number(data?.count ?? players.length);
-        const min = Number(data?.min_players ?? 3);
-        const max = Number(data?.max_players ?? 5);
+        const me =
+            state.currentUser?.username;
 
-        const isAdmin =
-            state.currentUser?.role === "admin";
-
-        box.innerHTML = `
-            <div class="spy-v2-panel-title">
-                <div>
-                    <small>لابی بازی</small>
-                    <h3>بازیکنان</h3>
-                </div>
-                <span class="spy-v2-count">${count}/${max}</span>
-            </div>
-
-            <div class="spy-v2-players">
-                ${
-                    players.length
-                        ? players.map((player) => `
-                            <div class="spy-v2-player">
-                                <div class="spy-v2-avatar">
-                                    ${
-                                        player.avatar_url
-                                            ? `<img src="${escapeHtml(absoluteUrl(player.avatar_url))}" alt="">`
-                                            : escapeHtml(player.emoji || "🎮")
-                                    }
-                                </div>
-                                <div class="spy-v2-player-name">
-                                    <strong>${escapeHtml(player.display_name || player.username || "بازیکن")}</strong>
-                                    ${
-                                        player.username === state.currentUser?.username
-                                            ? `<small>شما</small>`
-                                            : ""
-                                    }
-                                </div>
-                            </div>
-                        `).join("")
-                        : `<div class="spy-v2-empty">هنوز بازیکنی وارد نشده.</div>`
-                }
-            </div>
-
-            <div class="spy-v2-lobby-actions">
-                ${
-                    isAdmin
-                        ? `
-                            <label class="spy-v2-field">
-                                <span>زمان مرحله بحث</span>
-                                <div class="spy-v2-time-row">
-                                    <input id="spyV2Discussion" type="number" min="10" max="1800" value="120">
-                                    <span>ثانیه</span>
-                                </div>
-                            </label>
-
-                            <button
-                                type="button"
-                                id="spyV2Start"
-                                class="spy-v2-primary"
-                                ${count < min ? "disabled" : ""}
-                            >
-                                ${
-                                    count < min
-                                        ? `🔒 حداقل ${min} بازیکن`
-                                        : "🚀 شروع بازی"
-                                }
-                            </button>
-                        `
-                        : `
-                            <div class="spy-v2-waiting">
-                                ⏳ منتظر شروع بازی توسط مدیر...
-                            </div>
-                        `
-                }
-            </div>
-        `;
-
-        $("#spyV2Start")?.addEventListener("click", () => {
-            let debug = document.getElementById("spyStartDebug");
-
-            if (!debug) {
-                debug = document.createElement("div");
-                debug.id = "spyStartDebug";
-                debug.style.cssText =
-                    "position:fixed;z-index:999999;top:10px;left:10px;right:10px;" +
-                    "padding:14px;background:#111;color:#fff;border:2px solid #00ff88;" +
-                    "border-radius:12px;font:14px monospace;direction:ltr;" +
-                    "white-space:pre-wrap;word-break:break-word;";
-                document.body.appendChild(debug);
-            }
-
-            debug.textContent =
-                "SPY START CLICK DETECTED\n" +
-                "socket exists: " + !!state.socket + "\n" +
-                "socket connected: " + !!state.socket?.connected + "\n" +
-                "game id: " + String(this.gameId) + "\n" +
-                "username: " + String(state.currentUser?.username || "");
-
-            const input = $("#spyV2Discussion");
-            let seconds = Number(input?.value || 120);
-
-            if (!Number.isFinite(seconds)) seconds = 120;
-
-            seconds = Math.max(
-                10,
-                Math.min(1800, Math.floor(seconds))
+        const isHost =
+            data.host === me ||
+            players.some(
+                p =>
+                    p.username === me &&
+                    p.is_host
             );
 
-            if (!state.socket?.connected) {
-                debug.textContent +=
-                    "\n\n❌ SOCKET NOT CONNECTED";
-                debug.style.borderColor = "#ff4444";
-                toast("اتصال به سرور برقرار نیست.");
-                return;
-            }
-
-            debug.textContent +=
-                "\n\n📤 EMITTING spy_start...";
-
-            state.socket.emit("spy_start", {
-                game_id: this.gameId,
-                username: state.currentUser.username,
-                discussion_seconds: seconds
-            });
-
-            setTimeout(() => {
-                debug.textContent +=
-                    "\n\n⏱️ 1 second after emit..." +
-                    "\nIf nothing else appears, server response was not received.";
-            }, 1000);
-        });
-
-    },
-    renderState(data) {
-        if (!data) return;
-
-        state.currentGame.spyState = data;
-
-        const phase = data.phase || "lobby";
-        const remaining =
-            Number(data.remaining_seconds ?? data.timer ?? 0);
-
-        this.renderPlayers(data);
-
-        if (phase === "lobby") {
-            this.renderLobby(data);
+        if (data.phase !== "lobby") {
+            box.innerHTML = "";
             return;
         }
-
-        const role = data.my_role || data.role;
-
-        if (role) {
-            state.currentGame.spyRole = {
-                role,
-                word: data.word || data.secret_word || null
-            };
-            this.renderRole(state.currentGame.spyRole);
-        }
-
-        if (phase === "discussion") {
-            this.setStatus("💬 مرحله بحث", remaining);
-            this.renderGuessButton(role);
-            this.hideVoting();
-            return;
-        }
-
-        if (phase === "voting") {
-            this.setStatus("🗳️ رأی‌گیری", remaining);
-            this.renderVoting(data);
-            return;
-        }
-
-        if (phase === "finished") {
-            this.hideVoting();
-            this.hideGuess();
-            this.renderResult(data.result || state.currentGame.spyResult || data);
-        }
-    },
-
-    renderRole(roleData) {
-        const box = $("#spyV2Role");
-        if (!box || !roleData) return;
-
-        const isSpy = roleData.role === "spy";
 
         box.innerHTML = `
-            <div class="spy-v2-role ${isSpy ? "danger" : "citizen"}">
-                <div class="spy-v2-role-icon">${isSpy ? "🕵️" : "🟢"}</div>
-                <div>
-                    <small>نقش شما</small>
-                    <h3>${isSpy ? "شما جاسوس هستید" : "شما شهروند هستید"}</h3>
-                    <p>
-                        ${
-                            isSpy
-                                ? "کلمه مخفی را نمی‌دانی. از بحث استفاده کن تا شناسایی نشوی."
-                                : `کلمه مخفی: <strong>${escapeHtml(roleData.word || "—")}</strong>`
-                        }
-                    </p>
+            <div class="spy-v2-section-title">
+                انتظار بازیکن‌ها
+            </div>
+
+            <div class="spy-v2-count">
+                ${players.length}/${data.max_players || 5}
+            </div>
+
+            ${
+                isHost
+                    ? `
+                    <label class="spy-v2-label">
+                        زمان بحث، به ثانیه
+                    </label>
+
+                    <input
+                        id="spyDiscussion"
+                        class="spy-v2-number"
+                        type="number"
+                        min="10"
+                        max="1800"
+                        value="120"
+                    >
+
+                    <button
+                        type="button"
+                        id="spyStart"
+                        class="spy-v2-primary spy-v2-wide"
+                    >
+                        شروع بازی
+                    </button>
+                    `
+                    : `
+                    <div class="spy-v2-wait">
+                        منتظر سازنده بازی هستیم...
+                    </div>
+                    `
+            }
+        `;
+
+        $("#spyStart")?.addEventListener(
+            "click",
+            () => {
+                let seconds =
+                    Number(
+                        $("#spyDiscussion")?.value
+                        || 120
+                    );
+
+                if (!Number.isFinite(seconds)) {
+                    seconds = 120;
+                }
+
+                seconds = Math.max(
+                    10,
+                    Math.min(
+                        1800,
+                        Math.floor(seconds)
+                    )
+                );
+
+                if (
+                    !state.socket?.connected
+                ) {
+                    toast(
+                        "اتصال به سرور برقرار نیست."
+                    );
+                    return;
+                }
+
+                state.socket.emit(
+                    "spy_start",
+                    {
+                        game_id: this.gameId,
+                        username:
+                            state.currentUser.username,
+                        discussion_seconds:
+                            seconds
+                    }
+                );
+            }
+        );
+    },
+
+    renderRole(data) {
+        const box = $("#spyRole");
+
+        if (!box) return;
+
+        if (data.phase === "lobby") {
+            box.innerHTML = "";
+            return;
+        }
+
+        if (data.my_role === "spy") {
+            box.innerHTML = `
+                <div class="spy-role spy-role-spy">
+                    <div class="spy-role-icon">🕵️</div>
+                    <strong>شما جاسوس هستید</strong>
+                    <span>
+                        کلمه را نمی‌بینی.
+                        سعی کن از صحبت‌ها بفهمی.
+                    </span>
+
+                    ${
+                        data.can_guess
+                            ? `
+                            <button
+                                type="button"
+                                id="spyGuessOpen"
+                                class="spy-v2-secondary spy-v2-wide"
+                            >
+                                کلمه رو فهمیدم
+                            </button>
+                            `
+                            : ""
+                    }
                 </div>
+            `;
+        } else if (data.my_role === "citizen") {
+            box.innerHTML = `
+                <div class="spy-role spy-role-citizen">
+                    <div class="spy-role-icon">👤</div>
+                    <strong>شهروند هستی</strong>
+                    <span>کلمه مخفی:</span>
+                    <b>${escapeHtml(
+                        data.secret_word || "—"
+                    )}</b>
+                </div>
+            `;
+        } else {
+            box.innerHTML = "";
+        }
+
+        $("#spyGuessOpen")?.addEventListener(
+            "click",
+            () => this.renderGuessForm()
+        );
+    },
+
+    renderTimer(data) {
+        const box = $("#spyTimer");
+
+        if (!box) return;
+
+        if (
+            data.phase !== "discussion" &&
+            data.phase !== "voting"
+        ) {
+            box.innerHTML = "";
+            return;
+        }
+
+        const seconds = Math.max(
+            0,
+            Number(
+                data.remaining_seconds || 0
+            )
+        );
+
+        const title =
+            data.phase === "discussion"
+                ? "💬 زمان بحث"
+                : "🗳️ زمان رأی‌گیری";
+
+        box.innerHTML = `
+            <div class="spy-timer">
+                <span>${title}</span>
+                <strong>${seconds}</strong>
+                <small>ثانیه</small>
             </div>
         `;
     },
 
     renderPlayers(data) {
-        const box = $("#spyV2Players");
+        const box = $("#spyPlayers");
+
         if (!box) return;
 
-        const players = Array.isArray(data?.players)
-            ? data.players
-            : [];
+        const players =
+            Array.isArray(data.players)
+                ? data.players
+                : [];
 
         if (!players.length) {
             box.innerHTML = "";
@@ -2376,599 +2286,758 @@ const SpyGameUI = {
         }
 
         box.innerHTML = `
-            <div class="spy-v2-panel-title">
-                <div>
-                    <small>بازیکنان بازی</small>
-                    <h3>بازیکنان حاضر</h3>
-                </div>
+            <div class="spy-v2-section-title">
+                بازیکن‌ها
             </div>
 
-            <div class="spy-v2-compact-players">
-                ${players.map((username) => {
-                    const player =
-                        state.players?.[username] || {};
-
-                    const name =
-                        player.display_name ||
-                        CONFIG.PLAYERS?.[username]?.name ||
-                        username;
-
-                    return `
-                        <div class="spy-v2-compact-player">
-                            <span>🎮</span>
-                            <strong>${escapeHtml(name)}</strong>
+            <div class="spy-player-list">
+                ${players.map(player => `
+                    <div class="spy-player">
+                        <span>
                             ${
-                                username === state.currentUser?.username
-                                    ? `<small>شما</small>`
-                                    : ""
+                                player.is_host
+                                    ? "👑 "
+                                    : "🎮 "
                             }
-                        </div>
-                    `;
-                }).join("")}
+                            ${escapeHtml(
+                                player.username
+                            )}
+                        </span>
+
+                        <span>
+                            ${
+                                player.connected
+                                    ? "🟢"
+                                    : "🔴"
+                            }
+                        </span>
+                    </div>
+                `).join("")}
             </div>
         `;
     },
 
-    renderGuessButton(role) {
-        const box = $("#spyV2Guess");
+    renderVoting(data) {
+        const box = $("#spyVoting");
+
         if (!box) return;
 
-        if (role !== "spy") {
+        if (data.phase !== "voting") {
             box.innerHTML = "";
             return;
         }
 
+        const players =
+            Array.isArray(data.players)
+                ? data.players
+                : [];
+
+        const me =
+            state.currentUser?.username;
+
         box.innerHTML = `
-            <div class="spy-v2-action-card">
-                <div>
-                    <small>حرکت ویژه جاسوس</small>
-                    <h3>فکر می‌کنی کلمه رو فهمیدی؟</h3>
-                    <p>می‌تونی حدست رو ثبت کنی؛ چت تا قبل از ثبت حدس باز می‌مونه.</p>
+            <div class="spy-vote-card">
+                <div class="spy-v2-section-title">
+                    چه کسی جاسوس است؟
                 </div>
-                <button type="button" id="spyV2GuessOpen" class="spy-v2-secondary">
-                    🧠 کلمه رو فهمیدم
-                </button>
+
+                <div class="spy-vote-list">
+                    ${players
+                        .filter(
+                            p =>
+                                p.username !== me
+                        )
+                        .map(player => `
+                            <button
+                                type="button"
+                                class="
+                                    spy-vote-button
+                                    ${
+                                        this.selectedVote ===
+                                        player.username
+                                            ? "selected"
+                                            : ""
+                                    }
+                                "
+                                data-spy-vote="${escapeHtml(
+                                    player.username
+                                )}"
+                            >
+                                <span>🎮</span>
+                                ${escapeHtml(
+                                    player.username
+                                )}
+                            </button>
+                        `)
+                        .join("")}
+                </div>
+
+                <div class="spy-vote-note">
+                    می‌تونی تا پایان ۱۰ ثانیه رأی خودت رو تغییر بدی.
+                </div>
             </div>
         `;
 
-        $("#spyV2GuessOpen")?.addEventListener("click", () => {
-            this.openGuess();
-        });
-    },
+        box
+            .querySelectorAll(
+                "[data-spy-vote]"
+            )
+            .forEach(button => {
+                button.addEventListener(
+                    "click",
+                    () => {
+                        const target =
+                            button.dataset.spyVote;
 
-    openGuess() {
-        const box = $("#spyV2Guess");
-        if (!box) return;
+                        this.selectedVote = target;
 
-        this.guessOpen = true;
+                        state.socket?.emit(
+                            "spy_vote",
+                            {
+                                game_id:
+                                    this.gameId,
+                                username:
+                                    state.currentUser
+                                        ?.username,
+                                target
+                            }
+                        );
 
-        box.innerHTML = `
-            <div class="spy-v2-action-card">
-                <div>
-                    <small>حدس جاسوس</small>
-                    <h3>کلمه رو وارد کن</h3>
-                    <p>بعد از ثبت، نتیجه نهایی می‌شه.</p>
-                </div>
-
-                <div class="spy-v2-guess-form">
-                    <input
-                        id="spyV2GuessInput"
-                        type="text"
-                        maxlength="100"
-                        placeholder="حدس تو..."
-                        autocomplete="off"
-                    >
-                    <div>
-                        <button type="button" id="spyV2GuessCancel" class="spy-v2-muted">
-                            برگشت به چت
-                        </button>
-                        <button type="button" id="spyV2GuessSubmit" class="spy-v2-primary">
-                            ثبت حدس
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        $("#spyV2GuessCancel")?.addEventListener("click", () => {
-            this.guessOpen = false;
-            const role = state.currentGame?.spyRole?.role;
-            this.renderGuessButton(role);
-        });
-
-        $("#spyV2GuessSubmit")?.addEventListener("click", () => {
-            const input = $("#spyV2GuessInput");
-            const guess = input?.value.trim();
-
-            if (!guess) {
-                toast("اول حدست رو بنویس.");
-                return;
-            }
-
-            if (!state.socket?.connected) {
-                toast("اتصال به سرور برقرار نیست.");
-                return;
-            }
-
-            state.socket.emit("spy_guess", {
-                game_id: this.gameId,
-                username: state.currentUser.username,
-                guess
+                        this.renderVoting(
+                            data
+                        );
+                    }
+                );
             });
-        });
-
-        $("#spyV2GuessInput")?.focus();
     },
 
-    hideGuess() {
-        const box = $("#spyV2Guess");
-        if (box) box.innerHTML = "";
-    },
+    renderGuessForm() {
+        const box = $("#spyGuess");
 
-    renderVoting(data) {
-        const box = $("#spyV2Voting");
         if (!box) return;
 
-        const players = Array.isArray(data?.players)
-            ? data.players
-            : [];
-
-        const me = state.currentUser?.username;
-
         box.innerHTML = `
-            <div class="spy-v2-vote-card">
-                <div class="spy-v2-panel-title">
-                    <div>
-                        <small>مرحله نهایی</small>
-                        <h3>🗳️ جاسوس کیه؟</h3>
-                    </div>
-                    <span>۱۰ ثانیه</span>
+            <div class="spy-guess-card">
+                <div class="spy-v2-section-title">
+                    حدس کلمه
                 </div>
 
-                <p class="spy-v2-vote-note">
-                    رأی دیگران دیده نمی‌شود. می‌تونی تا پایان زمان، رأی خودت رو تغییر بدی.
-                </p>
+                <input
+                    id="spyGuessInput"
+                    type="text"
+                    maxlength="100"
+                    class="spy-v2-text"
+                    placeholder="کلمه‌ای که فکر می‌کنی..."
+                >
 
-                <div class="spy-v2-votes">
-                    ${
-                        players
-                            .filter((username) => username !== me)
-                            .map((username) => {
-                                const player =
-                                    state.players?.[username] || {};
+                <div class="spy-v2-actions">
+                    <button
+                        type="button"
+                        id="spyGuessCancel"
+                        class="spy-v2-muted"
+                    >
+                        برگشت
+                    </button>
 
-                                const name =
-                                    player.display_name ||
-                                    CONFIG.PLAYERS?.[username]?.name ||
-                                    username;
-
-                                const selected =
-                                    this.selectedVote === username;
-
-                                return `
-                                    <button
-                                        type="button"
-                                        class="spy-v2-vote ${selected ? "selected" : ""}"
-                                        data-vote-target="${escapeHtml(username)}"
-                                    >
-                                        <span>🎯</span>
-                                        <strong>${escapeHtml(name)}</strong>
-                                        ${selected ? "<small>رأی فعلی شما</small>" : ""}
-                                    </button>
-                                `;
-                            })
-                            .join("")
-                    }
-                </div>
-
-                <div id="spyV2VoteStatus" class="spy-v2-vote-status">
-                    ${
-                        this.selectedVote
-                            ? "✅ رأی ثبت شده — در صورت نیاز تغییرش بده."
-                            : "یک نفر را انتخاب کن."
-                    }
+                    <button
+                        type="button"
+                        id="spyGuessSubmit"
+                        class="spy-v2-primary"
+                    >
+                        ثبت حدس
+                    </button>
                 </div>
             </div>
         `;
 
-        box.querySelectorAll("[data-vote-target]").forEach((button) => {
-            button.addEventListener("click", () => {
-                const target = button.dataset.voteTarget;
+        $("#spyGuessCancel")?.addEventListener(
+            "click",
+            () => {
+                box.innerHTML = "";
+            }
+        );
 
-                if (!target || !state.socket?.connected) {
+        $("#spyGuessSubmit")?.addEventListener(
+            "click",
+            () => {
+                const input =
+                    $("#spyGuessInput");
+
+                const guess =
+                    input?.value.trim();
+
+                if (!guess) {
+                    toast(
+                        "حدست رو وارد کن."
+                    );
                     return;
                 }
 
-                this.selectedVote = target;
+                state.socket?.emit(
+                    "spy_guess",
+                    {
+                        game_id: this.gameId,
+                        username:
+                            state.currentUser
+                                ?.username,
+                        guess
+                    }
+                );
+            }
+        );
 
-                state.socket.emit("spy_vote", {
-                    game_id: this.gameId,
-                    username: state.currentUser.username,
-                    target
-                });
-
-                this.renderVoting(data);
-            });
-        });
+        $("#spyGuessInput")?.focus();
     },
 
-    hideVoting() {
-        const box = $("#spyV2Voting");
-        if (box) box.innerHTML = "";
-    },
+    renderResult(result) {
+        const box = $("#spyResult");
 
-    renderResult(data) {
-        const box = $("#spyV2Result");
-        if (!box || !data) return;
+        if (!box || !result) return;
 
-        state.currentGame.spyResult = data;
-
-        const citizensWon =
-            data.winner === "citizens";
-
-        const votes = data.votes || data.vote_counts || {};
+        const winner =
+            result.winner === "spy"
+                ? "جاسوس"
+                : "شهروندها";
 
         box.innerHTML = `
-            <div class="spy-v2-result ${citizensWon ? "citizens" : "spy"}">
-                <div class="spy-v2-result-icon">
-                    ${citizensWon ? "🎉" : "🕵️"}
-                </div>
-
-                <small>نتیجه نهایی</small>
-
-                <h2>
+            <div class="spy-result">
+                <div class="spy-result-icon">
                     ${
-                        citizensWon
-                            ? "شهروندها برنده شدند"
-                            : "جاسوس برنده شد"
+                        result.winner === "spy"
+                            ? "🕵️"
+                            : "🎉"
                     }
-                </h2>
-
-                <div class="spy-v2-result-grid">
-                    <div>
-                        <small>جاسوس</small>
-                        <strong>${escapeHtml(data.spy || "نامشخص")}</strong>
-                    </div>
-
-                    <div>
-                        <small>کلمه</small>
-                        <strong>${escapeHtml(data.common_word || data.word || "—")}</strong>
-                    </div>
                 </div>
 
-                ${
-                    Object.keys(votes).length
-                        ? `
-                            <div class="spy-v2-final-votes">
-                                <small>تعداد رأی‌ها</small>
-                                ${Object.entries(votes).map(([username, count]) => `
-                                    <div>
-                                        <span>${escapeHtml(username)}</span>
-                                        <strong>${escapeHtml(String(count))}</strong>
-                                    </div>
-                                `).join("")}
+                <strong>
+                    برنده: ${winner}
+                </strong>
+
+                <span>
+                    ${escapeHtml(
+                        result.reason || ""
+                    )}
+                </span>
+
+                <div class="spy-result-details">
+                    <div>
+                        جاسوس:
+                        <b>${escapeHtml(
+                            result.spy || "—"
+                        )}</b>
+                    </div>
+
+                    <div>
+                        کلمه:
+                        <b>${escapeHtml(
+                            result.secret_word || "—"
+                        )}</b>
+                    </div>
+
+                    ${
+                        result.eliminated
+                            ? `
+                            <div>
+                                انتخاب‌شده:
+                                <b>${escapeHtml(
+                                    result.eliminated
+                                )}</b>
                             </div>
-                        `
-                        : ""
-                }
+                            `
+                            : ""
+                    }
+                </div>
             </div>
         `;
     },
 
-    sendChat() {
-        const input = $("#spyV2Input");
+    setStatus(text, seconds = null) {
+        const box = $("#spyStatus");
 
-        if (!input || !state.currentUser) return;
+        if (!box) return;
 
-        const message = input.value.trim();
+        box.textContent =
+            seconds === null
+                ? text
+                : `${text} • ${seconds} ثانیه`;
+    },
 
-        if (!message) return;
+    renderState(data) {
+        if (!data) return;
 
-        if (!state.socket?.connected) {
-            toast("اتصال به سرور برقرار نیست.");
-            return;
+        if (data.game_id) {
+            this.gameId =
+                data.game_id;
+
+            if (state.currentGame) {
+                state.currentGame.gameId =
+                    data.game_id;
+            }
         }
 
-        state.socket.emit("spy_chat", {
-            game_id: this.gameId,
-            username: state.currentUser.username,
-            message,
-            reply_to: this.replyTo?.id || null
-        });
+        this.lastPhase =
+            data.phase;
 
-        input.value = "";
-        this.replyTo = null;
-        this.renderReply();
-        input.focus();
+        this.renderLobby(data);
+        this.renderRole(data);
+        this.renderTimer(data);
+        this.renderPlayers(data);
+
+        if (data.phase === "voting") {
+            this.renderVoting(data);
+        } else {
+            $("#spyVoting").innerHTML = "";
+        }
+
+        if (data.phase === "finished") {
+            this.renderResult(
+                data.result
+            );
+        }
+
+        const labels = {
+            lobby: "در انتظار بازیکن‌ها",
+            discussion: "💬 مرحله بحث",
+            voting: "🗳️ مرحله رأی‌گیری",
+            finished: "🏁 بازی تمام شد"
+        };
+
+        this.setStatus(
+            labels[data.phase]
+                || "بازی جاسوس"
+        );
     },
 
     renderReply() {
-        const box = $("#spyV2Reply");
-        const text = $("#spyV2ReplyText");
+        const box = $("#spyReply");
+        const text = $("#spyReplyText");
 
         if (!box || !text) return;
 
         if (!this.replyTo) {
             box.hidden = true;
+            text.textContent = "";
             return;
         }
 
-        text.textContent =
-            this.replyTo.message ||
-            this.replyTo.display_name ||
-            "پیام";
-
         box.hidden = false;
+
+        text.textContent =
+            this.replyTo.username
+                ? `${this.replyTo.username}: ${this.replyTo.message}`
+                : this.replyTo.message;
+    },
+
+    sendChat() {
+        const input = $("#spyInput");
+
+        if (!input) return;
+
+        const message =
+            input.value.trim();
+
+        if (!message) return;
+
+        if (
+            !state.socket?.connected
+        ) {
+            toast(
+                "اتصال به سرور برقرار نیست."
+            );
+            return;
+        }
+
+        state.socket.emit(
+            "spy_chat",
+            {
+                game_id: this.gameId,
+                username:
+                    state.currentUser?.username,
+                message,
+                reply_to:
+                    this.replyTo?.id || null
+            }
+        );
+
+        input.value = "";
+        this.replyTo = null;
+        this.renderReply();
     },
 
     renderChatHistory(messages) {
-        const box = $("#spyV2Messages");
+        this.messages =
+            Array.isArray(messages)
+                ? messages
+                : [];
+
+        const box = $("#spyMessages");
+
         if (!box) return;
 
         box.innerHTML = "";
 
-        if (!Array.isArray(messages) || !messages.length) {
-            box.innerHTML = `
-                <div class="spy-v2-chat-empty">
-                    هنوز پیامی نیست. اولین پیام رو بفرست 👋
-                </div>
-            `;
-            return;
-        }
+        this.messages.forEach(
+            message => {
+                this.renderChatMessage(
+                    message,
+                    false
+                );
+            }
+        );
 
-        messages.forEach((message) => {
-            this.renderChatMessage(message, false);
-        });
-
-        box.scrollTop = box.scrollHeight;
+        box.scrollTop =
+            box.scrollHeight;
     },
 
-    renderChatMessage(data, autoScroll = true) {
-        const box = $("#spyV2Messages");
+    renderChatMessage(
+        data,
+        autoScroll = true
+    ) {
+        const box = $("#spyMessages");
 
         if (!box || !data) return;
 
-        const mine =
-            data.username === state.currentUser?.username;
-
-        const sender =
-            data.display_name ||
-            state.players?.[data.username]?.display_name ||
-            CONFIG.PLAYERS?.[data.username]?.name ||
-            data.username ||
-            "بازیکن";
-
-        const item = document.createElement("div");
+        const item =
+            document.createElement("div");
 
         item.className =
-            `spy-v2-message ${mine ? "mine" : "other"}`;
+            "spy-message";
 
-        item.dataset.messageId =
-            data.id || "";
+        if (
+            data.username ===
+            state.currentUser?.username
+        ) {
+            item.classList.add("mine");
+        }
 
         const reply =
             data.reply_to
                 ? `
                     <button
                         type="button"
-                        class="spy-v2-message-reply"
-                        data-jump-reply="${escapeHtml(String(data.reply_to))}"
+                        class="spy-message-reply"
+                        data-jump-reply
+                        data-jump-id="${escapeHtml(
+                            data.reply_to
+                        )}"
                     >
                         ↩ پاسخ به پیام
                     </button>
                 `
                 : "";
 
-        const body =
-            data.is_image
-                ? "🖼️ تصویر"
-                : data.message || "";
+        item.dataset.messageId =
+            data.id || "";
 
         item.innerHTML = `
+            <div class="spy-message-head">
+                <strong>
+                    ${escapeHtml(
+                        data.username || "کاربر"
+                    )}
+                </strong>
+            </div>
+
             ${reply}
 
-            <div class="spy-v2-message-head">
-                <strong>${escapeHtml(mine ? "شما" : sender)}</strong>
+            <div class="spy-message-text">
+                ${escapeHtml(
+                    data.message || ""
+                )}
             </div>
 
-            <div class="spy-v2-message-body">
-                ${escapeHtml(body)}
-            </div>
-
-            <div class="spy-v2-message-actions">
-                <button
-                    type="button"
-                    data-reply-message
-                >
-                    پاسخ
-                </button>
-            </div>
+            <button
+                type="button"
+                class="spy-message-action"
+                data-reply
+            >
+                پاسخ
+            </button>
         `;
 
-        item.querySelector("[data-reply-message]")?.addEventListener(
-            "click",
-            () => {
-                this.replyTo = {
-                    id: data.id,
-                    message: data.message || "پیام"
-                };
+        item
+            .querySelector("[data-reply]")
+            ?.addEventListener(
+                "click",
+                () => {
+                    this.replyTo = {
+                        id: data.id,
+                        username:
+                            data.username,
+                        message:
+                            data.message
+                    };
 
-                this.renderReply();
-                $("#spyV2Input")?.focus();
-            }
-        );
+                    this.renderReply();
+                    $("#spyInput")?.focus();
+                }
+            );
 
-        item.querySelector("[data-jump-reply]")?.addEventListener(
-            "click",
-            () => {
-                const target =
-                    item.querySelector("[data-jump-reply]")?.dataset.jumpReply;
+        item
+            .querySelector("[data-jump-reply]")
+            ?.addEventListener(
+                "click",
+                () => {
+                    const id =
+                        item
+                            .querySelector(
+                                "[data-jump-reply]"
+                            )
+                            ?.dataset.jumpId;
 
-                const original =
-                    box.querySelector(`[data-message-id="${CSS.escape(target || "")}"]`);
+                    if (!id) return;
 
-                original?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center"
-                });
+                    const target =
+                        box.querySelector(
+                            `[data-message-id="${CSS.escape(id)}"]`
+                        );
 
-                original?.classList.add("reply-highlight");
-
-                setTimeout(() => {
-                    original?.classList.remove("reply-highlight");
-                }, 1000);
-            }
-        );
+                    target?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+                }
+            );
 
         box.appendChild(item);
 
         if (autoScroll) {
-            box.scrollTop = box.scrollHeight;
-        }
-    }
-};
-
-/* Spy socket events */
-
-if (typeof socket !== "undefined") {
-    // kept empty intentionally; main socket is state.socket
-}
-
-function setupSpySocketListeners() {
-    if (!state.socket || state.spySocketListenersReady) {
-        return;
-    }
-
-    state.spySocketListenersReady = true;
-
-    state.socket.on("spy_created", (data) => {
-        if (!data) return;
-
-        if (data.game_id) {
-            SpyGameUI.gameId = data.game_id;
-            state.currentGame.gameId = data.game_id;
-        }
-
-        SpyGameUI.renderState(data);
-    });
-
-    state.socket.on("spy_joined", (data) => {
-        if (!data) return;
-
-        if (data.game_id) {
-            SpyGameUI.gameId = data.game_id;
-            state.currentGame.gameId = data.game_id;
-        }
-
-        SpyGameUI.renderState(data);
-    });
-
-    state.socket.on("spy_state", (data) => {
-        if (!data) return;
-        SpyGameUI.renderState(data);
-    });
-
-    state.socket.on("spy_started", (data) => {
-        if (!data) return;
-
-        SpyGameUI.renderState(data);
-
-        state.socket.emit("spy_state", {
-            game_id: SpyGameUI.gameId,
-            username: state.currentUser?.username
-        });
-    });
-
-    state.socket.on("spy_tick", (data) => {
-        if (!data) return;
-
-        if (data.phase === "discussion") {
-            SpyGameUI.setStatus(
-                "💬 مرحله بحث",
-                Number(data.remaining_seconds ?? 0)
-            );
-        } else if (data.phase === "voting") {
-            SpyGameUI.setStatus(
-                "🗳️ رأی‌گیری",
-                Number(data.remaining_seconds ?? 0)
-            );
-
-            SpyGameUI.renderVoting(data);
-        }
-
-        if (data.phase === "finished") {
-            SpyGameUI.renderResult(
-                data.result || data
-            );
-        }
-    });
-
-    state.socket.on("spy_voting_started", (data) => {
-        if (!data) return;
-
-        SpyGameUI.selectedVote = null;
-        SpyGameUI.renderState({
-            ...data,
-            phase: "voting"
-        });
-    });
-
-    state.socket.on("spy_finished", (data) => {
-        if (!data) return;
-
-        SpyGameUI.renderResult(data);
-        SpyGameUI.hideVoting();
-        SpyGameUI.hideGuess();
-        SpyGameUI.setStatus("🏁 بازی تمام شد");
-    });
-
-    state.socket.on("spy_chat_history", (data) => {
-        const messages =
-            Array.isArray(data)
-                ? data
-                : data?.messages || [];
-
-        SpyGameUI.renderChatHistory(messages);
-    });
-
-    state.socket.on("spy_chat", (data) => {
-        if (!data) return;
-
-        SpyGameUI.renderChatMessage(data);
-
-        const box = $("#spyV2Messages");
-
-        if (box) {
             const nearBottom =
                 box.scrollHeight -
                 box.scrollTop -
-                box.clientHeight < 100;
+                box.clientHeight < 120;
 
-            if (!nearBottom) {
-                box.classList.add("has-new");
-                show($("#spyV2NewMessage"));
+            if (nearBottom) {
+                box.scrollTop =
+                    box.scrollHeight;
             }
         }
-    });
+    },
 
-    state.socket.on("spy_vote", (data) => {
-        if (!data) return;
-
+    close() {
         if (
-            data.username ===
-            state.currentUser?.username
+            state.socket?.connected
         ) {
-            toast("✅ رأی ثبت شد.");
+            state.socket.emit(
+                "spy_leave",
+                {
+                    game_id: this.gameId,
+                    username:
+                        state.currentUser
+                            ?.username
+                }
+            );
         }
-    });
 
-    state.socket.on("spy_error", (data) => {
-        toast(
-            data?.message ||
-            data?.error ||
-            "عملیات جاسوس انجام نشد."
-        );
-    });
+        state.currentGame = null;
+
+        hide($("#gameModal"));
+    }
+};
+
+
+/* ============================================================
+   SPY SOCKET EVENTS
+   ============================================================ */
+
+function setupSpySocketListeners() {
+    const socket = state.socket;
+
+    if (
+        !socket ||
+        socket === SpyGameUI.boundSocket
+    ) {
+        return;
+    }
+
+    SpyGameUI.boundSocket =
+        socket;
+
+    socket.on(
+        "connect",
+        () => {
+            if (
+                state.currentGame?.type ===
+                "spy"
+            ) {
+                SpyGameUI.enterRoom();
+            }
+        }
+    );
+
+    socket.on(
+        "spy_created",
+        data => {
+            SpyGameUI.renderState(
+                data
+            );
+        }
+    );
+
+    socket.on(
+        "spy_joined",
+        data => {
+            SpyGameUI.renderState(
+                data
+            );
+        }
+    );
+
+    socket.on(
+        "spy_state",
+        data => {
+            SpyGameUI.renderState(
+                data
+            );
+        }
+    );
+
+    socket.on(
+        "spy_started",
+        () => {
+            socket.emit(
+                "spy_state",
+                {
+                    game_id:
+                        SpyGameUI.gameId,
+                    username:
+                        state.currentUser
+                            ?.username
+                }
+            );
+        }
+    );
+
+    socket.on(
+        "spy_tick",
+        data => {
+            if (!data) return;
+
+            SpyGameUI.renderTimer(
+                data
+            );
+
+            if (
+                data.phase === "voting"
+            ) {
+                SpyGameUI.renderVoting(
+                    {
+                        ...data,
+                        players:
+                            state.currentGame
+                                ?.data
+                                ?.players || []
+                    }
+                );
+            }
+
+            if (
+                data.phase === "finished"
+            ) {
+                SpyGameUI.renderResult(
+                    data.result
+                );
+            }
+        }
+    );
+
+    socket.on(
+        "spy_voting_started",
+        data => {
+            SpyGameUI.selectedVote =
+                null;
+
+            SpyGameUI.renderState(
+                {
+                    ...data,
+                    phase: "voting"
+                }
+            );
+        }
+    );
+
+    socket.on(
+        "spy_vote",
+        data => {
+            if (
+                data?.username ===
+                state.currentUser?.username
+            ) {
+                toast(
+                    "✅ رأی ثبت شد."
+                );
+            }
+        }
+    );
+
+    socket.on(
+        "spy_finished",
+        data => {
+            SpyGameUI.renderResult(
+                data
+            );
+
+            SpyGameUI.renderState(
+                {
+                    ...data,
+                    phase: "finished",
+                    result: data
+                }
+            );
+        }
+    );
+
+    socket.on(
+        "spy_chat_history",
+        data => {
+            SpyGameUI.renderChatHistory(
+                Array.isArray(data)
+                    ? data
+                    : data?.messages || []
+            );
+        }
+    );
+
+    socket.on(
+        "spy_chat",
+        data => {
+            const box =
+                $("#spyMessages");
+
+            if (!box) return;
+
+            const nearBottom =
+                box.scrollHeight -
+                box.scrollTop -
+                box.clientHeight < 120;
+
+            SpyGameUI.renderChatMessage(
+                data,
+                nearBottom
+            );
+
+            if (!nearBottom) {
+                box.classList.add(
+                    "has-new"
+                );
+
+                show(
+                    $("#spyNewMessage")
+                );
+            }
+        }
+    );
+
+    socket.on(
+        "spy_error",
+        data => {
+            toast(
+                data?.message ||
+                data?.error ||
+                "خطایی در بازی جاسوس رخ داد."
+            );
+        }
+    );
 }
 
 setupSpySocketListeners();

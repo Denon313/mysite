@@ -2043,10 +2043,10 @@ def internal_error(error):
 
 
 # ============================================================
-# SPY SOCKET ENGINE
+# SPY GAME ENGINE
 # ============================================================
 
-from spy_socket import register_spy_socket
+from spy_game import register_spy_socket
 
 register_spy_socket(
     socketio,
