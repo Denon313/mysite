@@ -1066,6 +1066,7 @@ console.log("GAME_ROOM_APP_JS_LOADED");
         );
 
         setupSocketEvents();
+        setupSpySocketListeners();
     }
 
 
