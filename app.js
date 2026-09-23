@@ -361,55 +361,24 @@ render = function() {
     }
 };
 
-/* =========================
-   NATURE 3D GAME
-========================= */
+
+/* ===== NATURE 3D GAME ===== */
 
 function openNature3D() {
-    const old = document.getElementById("nature3dGame");
-    if (old) old.remove();
+    const modal = document.getElementById("gameModal");
+    const content = document.getElementById("gameContent");
 
-    const game = document.createElement("div");
-    game.id = "nature3dGame";
+    if (!modal || !content) return;
 
-    game.innerHTML = `
-        <div style="
-            position:fixed;
-            inset:0;
-            z-index:99999;
-            background:#101810;
-            color:white;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-            font-family:system-ui,sans-serif;
-            text-align:center;
-        ">
-            <div style="font-size:80px;">🌲</div>
-            <h1 style="margin:10px 0;">جنگل آرام</h1>
-            <p style="opacity:.75;">دنیای سه‌بعدی در حال آماده‌سازی...</p>
+    modal.classList.remove("hidden");
 
-            <button id="closeNature3D" style="
-                margin-top:25px;
-                padding:14px 28px;
-                border:0;
-                border-radius:14px;
-                background:#ffffff;
-                color:#111;
-                font-size:16px;
-                font-weight:700;
-            ">
-                برگشت
-            </button>
+    content.innerHTML = `
+        <div class="nature3d-placeholder">
+            <div class="nature3d-placeholder-icon">🌲</div>
+            <h1>جنگل آرام</h1>
+            <p>دنیای سه‌بعدی در حال آماده‌سازی...</p>
         </div>
     `;
-
-    document.body.appendChild(game);
-
-    document.getElementById("closeNature3D")?.addEventListener("click", () => {
-        game.remove();
-    });
 }
 
 document.addEventListener("click", (event) => {
@@ -418,6 +387,12 @@ document.addEventListener("click", (event) => {
     if (!button) return;
 
     event.preventDefault();
+    event.stopPropagation();
+
     openNature3D();
+});
+
+document.getElementById("closeGame")?.addEventListener("click", () => {
+    document.getElementById("gameModal")?.classList.add("hidden");
 });
 
