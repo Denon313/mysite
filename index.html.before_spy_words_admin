@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Game Room 🎮</title>
+
+    <meta name="theme-color" content="#080b14">
+    <meta name="description" content="اتاق بازی خصوصی پنج نفره">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- =========================
+         APP
+    ========================== -->
+    <div id="app">
+
+        <!-- =========================
+             LOGIN SCREEN
+        ========================== -->
+        <section id="loginScreen" class="screen login-screen">
+
+            <div class="login-container">
+
+                <div class="brand">
+                    <div class="brand-icon">🎮</div>
+
+                    <h1>Game Room</h1>
+
+                    <p>
+                        اتاق بازی خصوصی
+                        <span>•</span>
+                        فقط ۵ نفر
+                    </p>
+                </div>
+
+                <div class="login-card">
+
+                    <div class="section-title">
+                        <span>👥</span>
+                        بازیکنت رو انتخاب کن
+                    </div>
+
+                    <div id="playerLoginList" class="player-login-list">
+
+                        <button
+                            class="player-login"
+                            data-username="mehdi"
+                            type="button"
+                        >
+                            <span class="player-avatar">👑</span>
+
+                            <span class="player-info">
+                                <strong>مهدی</strong>
+                                <small>مدیر</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="rastin"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>راستین</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="amirali"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>امیرعلی</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="mahna"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>مهنا</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+
+                        <button
+                            class="player-login"
+                            data-username="fatemeh"
+                            type="button"
+                        >
+                            <span class="player-avatar">🎮</span>
+
+                            <span class="player-info">
+                                <strong>فاطمه</strong>
+                                <small>بازیکن</small>
+                            </span>
+
+                            <span class="login-arrow">←</span>
+                        </button>
+
+                    </div>
+
+                    <div class="private-note">
+                        🔒 این اتاق خصوصی است و فقط اعضای مشخص‌شده می‌توانند وارد شوند.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             MAIN APP
+        ========================== -->
+        <section id="mainScreen" class="screen main-screen hidden">
+
+            <!-- HEADER -->
+            <header class="topbar">
+
+                <div class="topbar-right">
+
+                    <button
+                        id="menuButton"
+                        class="icon-button"
+                        type="button"
+                        aria-label="منو"
+                    >
+                        ☰
+                    </button>
+
+                    <div class="brand-small">
+
+                        <span class="brand-small-icon">
+                            🎮
+                        </span>
+
+                        <div>
+                            <strong>Game Room</strong>
+                            <small>اتاق خصوصی</small>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="topbar-left">
+
+                    <button
+                        id="chatButton"
+                        class="top-action"
+                        type="button"
+                    >
+                        💬
+                        <span id="chatBadge" class="notification-badge hidden">
+                            0
+                        </span>
+                    </button>
+
+
+                    <button
+                        id="profileButton"
+                        class="profile-mini"
+                        type="button"
+                    >
+                        <span id="headerAvatar">
+                            👤
+                        </span>
+
+                        <span id="headerName">
+                            مهدی
+                        </span>
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <!-- CONTENT -->
+            <main class="main-content">
+
+                <!-- HERO -->
+                <section class="hero-card">
+
+                    <div class="hero-glow"></div>
+
+                    <div class="hero-content">
+
+                        <div class="online-pill">
+                            <span class="pulse-dot"></span>
+                            اتاق آنلاین
+                        </div>
+
+                        <h1>
+                            وقت بازیه
+                            <span>🎮</span>
+                        </h1>
+
+                        <p>
+                            پنج نفر، سه بازی، کلی دردسر 😂
+                        </p>
+
+                    </div>
+
+                    <div class="hero-emoji">
+                        🎲
+                    </div>
+
+                </section>
+
+
+                <!-- MEMBERS -->
+                <section class="section">
+
+                    <div class="section-heading">
+
+                        <div>
+                            <span class="section-icon">👥</span>
+
+                            <div>
+                                <h2>اعضای اتاق</h2>
+                                <small>
+                                    <span id="onlineCount">0</span>
+                                    نفر آنلاین
+                                </small>
+                            </div>
+                        </div>
+
+                        <span class="room-code">
+                            🔒 PRIVATE
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        id="membersGrid"
+                        class="members-grid"
+                    >
+
+                        <!-- JS fills players -->
+
+                    </div>
+
+                </section>
+
+
+                <!-- GAMES -->
+                <section class="section games-section">
+
+                    <div class="section-heading">
+
+                        <div>
+                            <span class="section-icon">🎮</span>
+
+                            <div>
+                                <h2>بازی‌ها</h2>
+                                <small>
+                                    یک بازی انتخاب کن
+                                </small>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <div class="games-grid">
+
+
+                        <!-- SPY -->
+                        <article
+                            class="game-card spy-card"
+                            data-game="spy"
+                        >
+
+                            <div class="game-card-top">
+
+                                <div class="game-icon">
+                                    🕵️
+                                </div>
+
+                                <span class="game-status">
+                                    ۳–۵ نفر
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    جاسوس
+                                </h3>
+
+                                <p>
+                                    یکی جاسوسه...
+                                    بقیه باید پیداش کنن!
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    ⏱️ قابل تنظیم
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="spy"
+                                    type="button"
+                                >
+                                    بازی کنیم
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- MYSTERY -->
+                        <article
+                            class="game-card mystery-card"
+                            data-game="mystery"
+                        >
+
+                            <div class="game-card-top">
+
+                                <div class="game-icon">
+                                    🔎
+                                </div>
+
+                                <span class="game-status hardcore">
+                                    HARDCORE
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    اتاق پرونده مرموز
+                                </h3>
+
+                                <p>
+                                    سرنخ‌ها رو کنار هم بذارید
+                                    و راز پرونده رو حل کنید.
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    👥 همکاری تیمی
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="mystery"
+                                    type="button"
+                                >
+                                    ورود به پرونده
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- FORBIDDEN WORD -->
+                        <article
+                            class="game-card forbidden-card"
+                            data-game="forbidden"
+                        >
+
+                            <div class="game-card-top">
+
+                                <div class="game-icon">
+                                    🚫
+                                </div>
+
+                                <span class="game-status">
+                                    ۲ به ۲
+                                </span>
+
+                            </div>
+
+                            <div class="game-card-body">
+
+                                <h3>
+                                    کلمه ممنوعه
+                                </h3>
+
+                                <p>
+                                    کلمه رو توضیح بده،
+                                    ولی حواست به کلمات ممنوعه باشه!
+                                </p>
+
+                            </div>
+
+                            <div class="game-card-footer">
+
+                                <span>
+                                    ⚡ سریع و رقابتی
+                                </span>
+
+                                <button
+                                    class="play-button"
+                                    data-game="forbidden"
+                                    type="button"
+                                >
+                                    شروع بازی
+                                    ←
+                                </button>
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                </section>
+
+
+                <!-- ACTIVITY -->
+                <section class="section">
+
+                    <div class="section-heading">
+
+                        <div>
+                            <span class="section-icon">⚡</span>
+
+                            <div>
+                                <h2>فعالیت اتاق</h2>
+                                <small>
+                                    آخرین اتفاقات
+                                </small>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="activityList"
+                        class="activity-list"
+                    >
+
+                        <div class="empty-activity">
+                            هنوز فعالیتی ثبت نشده.
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </main>
+
+
+            <!-- FLOATING CHAT -->
+            <button
+                id="floatingChatButton"
+                class="floating-chat"
+                type="button"
+                aria-label="باز کردن چت"
+            >
+
+                <span class="floating-chat-icon">
+                    💬
+                </span>
+
+                <span class="floating-chat-text">
+                    چت اتاق
+                </span>
+
+                <span
+                    id="floatingChatBadge"
+                    class="floating-chat-badge hidden"
+                >
+                    0
+                </span>
+
+            </button>
+
+
+            <!-- ADMIN BUTTON -->
+            <button
+                id="adminButton"
+                class="admin-floating hidden"
+                type="button"
+                aria-label="پنل مدیریت"
+            >
+                ⚙️
+            </button>
+
+        </section>
+
+
+        <!-- =========================
+             CHAT PANEL
+        ========================== -->
+        <aside
+            id="chatPanel"
+            class="chat-panel hidden"
+        >
+
+            <div class="chat-header">
+
+                <div>
+
+                    <strong>
+                        💬 چت اتاق
+                    </strong>
+
+                    <small>
+                        پیام‌های زنده
+                    </small>
+
+                </div>
+
+                <button
+                    id="closeChat"
+                    class="icon-button"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+            </div>
+
+
+            <div
+                id="chatMessages"
+                class="chat-messages"
+            >
+
+                <div class="system-message">
+                    به Game Room خوش اومدی 🎮
+                </div>
+
+            </div>
+
+
+            <div class="chat-input-area">
+
+                <button
+                    id="chatImageButton"
+                    class="chat-tool"
+                    type="button"
+                    aria-label="ارسال تصویر"
+                >
+                    🖼️
+                </button>
+
+                <input
+                    id="chatInput"
+                    type="text"
+                    maxlength="500"
+                    autocomplete="off"
+                    placeholder="پیامت رو بنویس..."
+                >
+
+                <button
+                    id="sendChatButton"
+                    class="send-button"
+                    type="button"
+                    aria-label="ارسال"
+                >
+                    ➤
+                </button>
+
+                <input
+                    id="chatImageInput"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                >
+
+            </div>
+
+        </aside>
+
+
+        <!-- =========================
+             PROFILE MODAL
+        ========================== -->
+        <div
+            id="profileModal"
+            class="modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card profile-card">
+
+                <button
+                    id="closeProfile"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div class="profile-avatar-large">
+
+                    <img
+                        id="profileAvatarImage"
+                        class="hidden"
+                        alt="تصویر پروفایل"
+                    >
+
+                    <span
+                        id="profileAvatarFallback"
+                    >
+                        👤
+                    </span>
+
+                    <button
+                        id="changeAvatarButton"
+                        type="button"
+                        class="avatar-edit"
+                    >
+                        📷
+                    </button>
+
+                    <input
+                        id="profileAvatarInput"
+                        type="file"
+                        accept="image/*"
+                        hidden
+                    >
+
+                </div>
+
+
+                <h2>
+                    پروفایل من
+                </h2>
+
+                <p class="profile-username">
+                    حساب:
+                    <strong id="profileUsername">
+                        -
+                    </strong>
+                </p>
+
+
+                <label class="field-label">
+                    نام نمایشی
+                </label>
+
+                <input
+                    id="displayNameInput"
+                    class="text-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="نام نمایشی"
+                >
+
+
+                <button
+                    id="saveProfileButton"
+                    class="primary-button"
+                    type="button"
+                >
+                    ذخیره تغییرات
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             PASSWORD MODAL
+        ========================== -->
+        <div
+            id="passwordModal"
+            class="modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card">
+
+                <div class="modal-icon">
+                    👑
+                </div>
+
+                <h2>
+                    ورود مدیر
+                </h2>
+
+                <p>
+                    رمز مدیریت مهدی رو وارد کن.
+                </p>
+
+                <input
+                    id="passwordInput"
+                    class="text-input"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="رمز مدیریت"
+                >
+
+                <div
+                    id="passwordError"
+                    class="form-error hidden"
+                >
+                    رمز اشتباهه.
+                </div>
+
+                <div class="modal-actions">
+
+                    <button
+                        id="cancelPassword"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        لغو
+                    </button>
+
+                    <button
+                        id="confirmPassword"
+                        class="primary-button"
+                        type="button"
+                    >
+                        ورود
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             GAME MODAL / ROOM
+        ========================== -->
+        <div
+            id="gameModal"
+            class="modal game-modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card game-room-card">
+
+                <button
+                    id="closeGame"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div
+                    id="gameContent"
+                    class="game-content"
+                >
+
+                    <div class="game-loading">
+                        🎮
+                        <p>
+                            در حال آماده‌سازی بازی...
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             ADMIN PANEL
+        ========================== -->
+        <div
+            id="adminModal"
+            class="modal admin-modal hidden"
+        >
+
+            <div class="modal-overlay"></div>
+
+            <div class="modal-card admin-card">
+
+                <button
+                    id="closeAdmin"
+                    class="modal-close"
+                    type="button"
+                >
+                    ✕
+                </button>
+
+                <div class="admin-header">
+
+                    <div>
+                        <span class="admin-icon">
+                            👑
+                        </span>
+
+                        <div>
+                            <h2>
+                                پنل مدیریت
+                            </h2>
+
+                            <small>
+                                Game Room
+                            </small>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="admin-tabs">
+
+                    <button
+                        class="admin-tab active"
+                        data-admin-tab="dashboard"
+                        type="button"
+                    >
+                        📊 داشبورد
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="players"
+                        type="button"
+                    >
+                        👥 بازیکنان
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="rooms"
+                        type="button"
+                    >
+                        🚪 اتاق‌ها
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="scenarios"
+                        type="button"
+                    >
+                        🧩 سناریوها
+                    </button>
+
+                    <button
+                        class="admin-tab"
+                        data-admin-tab="settings"
+                        type="button"
+                    >
+                        ⚙️ تنظیمات
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="adminContent"
+                    class="admin-content"
+                >
+
+                    <div class="admin-dashboard">
+
+                        <div class="admin-stat">
+                            <span>🟢</span>
+                            <strong id="adminOnlineCount">0</strong>
+                            <small>آنلاین</small>
+                        </div>
+
+                        <div class="admin-stat">
+                            <span>🚪</span>
+                            <strong id="adminRoomCount">0</strong>
+                            <small>اتاق فعال</small>
+                        </div>
+
+                        <div class="admin-stat">
+                            <span>🎮</span>
+                            <strong id="adminGameCount">0</strong>
+                            <small>بازی در حال اجرا</small>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TOAST -->
+        <div
+            id="toastContainer"
+            class="toast-container"
+            aria-live="polite"
+        ></div>
+
+    </div>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>

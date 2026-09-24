@@ -86,16 +86,6 @@ console.log("GAME_ROOM_APP_JS_LOADED");
             forbidden: {
                 title: "کلمه ممنوعه",
                 emoji: "🚫"
-            },
-
-            nature3d: {
-                title: "جنگل آرام",
-                emoji: "🌲"
-            },
-
-            mehestan: {
-                title: "مهستان",
-                emoji: "🕵️‍♂️"
             }
         }
     };
@@ -121,6 +111,7 @@ console.log("GAME_ROOM_APP_JS_LOADED");
         currentGame: null,
 
         pendingAdminLogin: false,
+        adminToken: null,
 
         initialized: false
     };
@@ -305,7 +296,13 @@ console.log("GAME_ROOM_APP_JS_LOADED");
                     return;
                 }
 
-                await verifyAdminPassword(username, password);
+                const adminLogin = await verifyAdminPassword(
+                    username,
+                    password
+                );
+
+                state.adminToken =
+                    adminLogin.admin_token || null;
             }
 
             state.currentUser = {
@@ -3054,421 +3051,6 @@ function setupSpySocketListeners() {
 setupSpySocketListeners();
 
 
-
-/* =====================================================
-   MEHESTAN GAME UI
-   ===================================================== */
-
-const MehestanGameUI = {
-
-    open() {
-        state.currentGame = {
-            type: "mehestan",
-            gameId: null,
-            data: null
-        };
-
-        const content = $("#gameContent");
-
-        if (!content) {
-            toast("محیط مهستان پیدا نشد.");
-            return;
-        }
-
-        content.innerHTML = `
-            <div class="mehestan-shell">
-
-                <div class="mehestan-header">
-                    <div class="mehestan-header-icon">🕵️‍♂️</div>
-
-                    <div>
-                        <div class="mehestan-title">پرونده مرموز — شهر مهستان</div>
-                        <div class="mehestan-subtitle">
-                            واحد تحقیقات جنایی
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mehestan-intro">
-
-                    <div class="mehestan-case-badge">
-                        پرونده شماره M-001
-                    </div>
-
-                    <h1>پرونده قتل در شهر مهستان</h1>
-
-                    <p>
-                        یک پرونده جنایی جدید در شهر مهستان ثبت شده است.
-                        اطلاعات اولیه پرونده هنوز ناقص است و تحقیقات رسمی
-                        از این لحظه آغاز می‌شود.
-                    </p>
-
-                    <div class="mehestan-case-grid">
-
-                        <div class="mehestan-case-item">
-                            <span>🕘</span>
-                            <strong>زمان حادثه</strong>
-                            <small>23:40</small>
-                        </div>
-
-                        <div class="mehestan-case-item">
-                            <span>📍</span>
-                            <strong>محل اولیه</strong>
-                            <small>در حال شناسایی</small>
-                        </div>
-
-                        <div class="mehestan-case-item">
-                            <span>👤</span>
-                            <strong>وضعیت قربانی</strong>
-                            <small>تأیید شده</small>
-                        </div>
-
-                    </div>
-
-                    <div class="mehestan-objective">
-
-                        <div class="mehestan-objective-title">
-                            🎯 مأموریت شما
-                        </div>
-
-                        <p>
-                            محیط شهر را بررسی کنید، سرنخ‌ها را پیدا کنید،
-                            ارتباط میان افراد و مکان‌ها را کشف کنید و
-                            حقیقت پرونده را به دست آورید.
-                        </p>
-
-                    </div>
-
-                    <button
-                        id="mehestanEnterCity"
-                        class="mehestan-primary-button"
-                        type="button"
-                    >
-                        🗺️ ورود به شهر مهستان
-                    </button>
-
-                </div>
-
-            </div>
-        `;
-
-        show($("#gameModal"));
-
-        $("#mehestanEnterCity")?.addEventListener(
-            "click",
-            () => this.enterCity()
-        );
-    },
-
-    enterCity() {
-
-        const content = $("#gameContent");
-
-        if (!content) {
-            toast("محیط مهستان پیدا نشد.");
-            return;
-        }
-
-        const locations = [
-            { id: "hospital-pahlavi", name: "بیمارستان کوچه پهلوی", category: "hospital", icon: "🟢", x: 28, y: 31 },
-            { id: "hospital-golrokh", name: "بیمارستان کوچه گل‌رخ", category: "hospital", icon: "🟢", x: 63, y: 24 },
-            { id: "hospital-central", name: "بیمارستان مرکزی مهستان", category: "hospital", icon: "🟢", x: 51, y: 68 },
-
-            { id: "gold-rose", name: "طلافروشی رز", category: "gold", icon: "🔴", x: 72, y: 42 },
-            { id: "gold-nasr", name: "طلافروشی نصر", category: "gold", icon: "🔴", x: 35, y: 72 },
-            { id: "gold-shahr", name: "طلافروشی شهر", category: "gold", icon: "🔴", x: 81, y: 70 },
-
-            { id: "mobile-pahlavi", name: "مرکز موبایل پهلوی", category: "mobile", icon: "🟡", x: 44, y: 36 },
-            { id: "mobile-kourosh", name: "فروشگاه موبایل کوروش", category: "mobile", icon: "🟡", x: 67, y: 61 },
-
-            { id: "police-central", name: "کلانتری مرکزی مهستان", category: "police", icon: "🔵", x: 24, y: 55 },
-            { id: "police-vali", name: "کلانتری ولیعصر", category: "police", icon: "🔵", x: 76, y: 27 },
-
-            { id: "hotel-mahestan", name: "هتل بزرگ مهستان", category: "hotel", icon: "🟣", x: 54, y: 17 },
-            { id: "hotel-pars", name: "هتل پارس", category: "hotel", icon: "🟣", x: 86, y: 51 },
-
-            { id: "restaurant-shahr", name: "رستوران شهر", category: "restaurant", icon: "🟠", x: 39, y: 48 },
-            { id: "restaurant-night", name: "رستوران شبانه", category: "restaurant", icon: "🟠", x: 61, y: 78 },
-
-            { id: "bank-markazi", name: "بانک مرکزی مهستان", category: "bank", icon: "🟤", x: 18, y: 22 },
-            { id: "bank-kourosh", name: "بانک کوروش", category: "bank", icon: "🟤", x: 68, y: 83 },
-
-            { id: "pharmacy-pahlavi", name: "داروخانه پهلوی", category: "pharmacy", icon: "⚪", x: 31, y: 60 },
-            { id: "pharmacy-vali", name: "داروخانه ولیعصر", category: "pharmacy", icon: "⚪", x: 89, y: 31 },
-
-            { id: "store-central", name: "فروشگاه مرکزی", category: "store", icon: "🔷", x: 47, y: 57 },
-            { id: "telecom-iran", name: "مرکز مخابرات مهستان", category: "telecom", icon: "🩷", x: 14, y: 77 },
-
-            { id: "station", name: "ایستگاه قطار مهستان", category: "station", icon: "🚉", x: 82, y: 87 },
-            { id: "gas", name: "پمپ بنزین کوروش", category: "gas", icon: "⛽", x: 10, y: 43 },
-            { id: "factory", name: "کارخانه متروکه", category: "factory", icon: "🏭", x: 91, y: 78 },
-            { id: "park", name: "پارک قدیمی", category: "park", icon: "🌳", x: 57, y: 51 },
-            { id: "newspaper", name: "روزنامه مهستان", category: "newspaper", icon: "📰", x: 27, y: 86 },
-            { id: "cityhall", name: "شهرداری مهستان", category: "cityhall", icon: "🏛️", x: 50, y: 88 }
-        ];
-
-        const categories = [
-            ["all", "همه", "📍"],
-            ["hospital", "بیمارستان", "🟢"],
-            ["gold", "طلافروشی", "🔴"],
-            ["mobile", "موبایل", "🟡"],
-            ["police", "کلانتری", "🔵"],
-            ["hotel", "هتل", "🟣"],
-            ["restaurant", "رستوران", "🟠"],
-            ["bank", "بانک", "🟤"],
-            ["pharmacy", "داروخانه", "⚪"],
-            ["store", "فروشگاه", "🔷"],
-            ["telecom", "مخابرات", "🩷"]
-        ];
-
-        const renderMarkers = (list = locations) => {
-            const layer = $("#mehestanMapMarkers");
-            if (!layer) return;
-
-            layer.innerHTML = list.map(location => `
-                <button
-                    class="mehestan-map-marker"
-                    data-location-id="${location.id}"
-                    style="left:${location.x}%;top:${location.y}%"
-                    title="${location.name}"
-                    type="button"
-                >
-                    <span>${location.icon}</span>
-                    <small>${location.name}</small>
-                </button>
-            `).join("");
-
-            $$(".mehestan-map-marker").forEach(marker => {
-                marker.addEventListener("click", () => {
-                    const location = locations.find(
-                        item => item.id === marker.dataset.locationId
-                    );
-
-                    if (location) {
-                        this.openLocation(location);
-                    }
-                });
-            });
-        };
-
-        content.innerHTML = `
-            <div class="mehestan-city">
-
-                <div class="mehestan-city-topbar">
-
-                    <div class="mehestan-city-title">
-                        <span>🗺️</span>
-                        <div>
-                            <strong>شهر مهستان</strong>
-                            <small>جمعیت تقریبی: ۳۰۰٬۰۰۰ نفر</small>
-                        </div>
-                    </div>
-
-                    <div class="mehestan-city-search">
-                        <span>🔎</span>
-                        <input
-                            id="mehestanLocationSearch"
-                            type="search"
-                            placeholder="جست‌وجوی مکان، خیابان یا نام..."
-                            autocomplete="off"
-                        />
-                    </div>
-
-                    <div class="mehestan-city-clock">
-                        <span>🌙</span>
-                        <strong id="mehestanGameClock">23:40</strong>
-                    </div>
-
-                </div>
-
-                <div class="mehestan-city-layout">
-
-                    <aside class="mehestan-map-sidebar">
-
-                        <div class="mehestan-sidebar-title">
-                            📍 مکان‌های شهر
-                        </div>
-
-                        <div id="mehestanCategories" class="mehestan-categories">
-                            ${categories.map(([id, name, icon]) => `
-                                <button
-                                    class="mehestan-category-button ${id === "all" ? "active" : ""}"
-                                    data-category="${id}"
-                                    type="button"
-                                >
-                                    <span>${icon}</span>
-                                    ${name}
-                                </button>
-                            `).join("")}
-                        </div>
-
-                        <div class="mehestan-map-results-title">
-                            نتایج جست‌وجو
-                        </div>
-
-                        <div id="mehestanLocationResults"
-                             class="mehestan-location-results">
-                        </div>
-
-                    </aside>
-
-                    <main class="mehestan-map-area">
-
-                        <div id="mehestanMap"
-                             class="mehestan-map"
-                             tabindex="0">
-
-                            <div class="mehestan-map-grid"></div>
-
-                            <div class="mehestan-map-road road-1"></div>
-                            <div class="mehestan-map-road road-2"></div>
-                            <div class="mehestan-map-road road-3"></div>
-                            <div class="mehestan-map-road road-4"></div>
-
-                            <div class="mehestan-map-district district-a">
-                                مرکز شهر
-                            </div>
-
-                            <div class="mehestan-map-district district-b">
-                                منطقه پهلوی
-                            </div>
-
-                            <div class="mehestan-map-district district-c">
-                                منطقه ولیعصر
-                            </div>
-
-                            <div id="mehestanMapMarkers"></div>
-
-                            <div class="mehestan-map-controls">
-                                <button id="mehestanZoomIn" type="button">＋</button>
-                                <button id="mehestanZoomOut" type="button">−</button>
-                                <button id="mehestanResetMap" type="button">⌖</button>
-                            </div>
-
-                            <div class="mehestan-map-info">
-                                🕵️ حالت تحقیقات فعال
-                            </div>
-
-                        </div>
-
-                    </main>
-
-                </div>
-
-                <div class="mehestan-floating-chat">
-                    💬
-                </div>
-
-            </div>
-        `;
-
-        let activeCategory = "all";
-        let zoom = 1;
-
-        const renderResults = (list) => {
-            const results = $("#mehestanLocationResults");
-
-            if (!results) return;
-
-            results.innerHTML = list.length
-                ? list.map(location => `
-                    <button
-                        class="mehestan-location-result"
-                        data-location-id="${location.id}"
-                        type="button"
-                    >
-                        <span>${location.icon}</span>
-                        <span>
-                            <strong>${location.name}</strong>
-                            <small>مهستان · قابل بررسی</small>
-                        </span>
-                    </button>
-                `).join("")
-                : `<div class="mehestan-no-results">مکانی پیدا نشد.</div>`;
-
-            $$(".mehestan-location-result").forEach(button => {
-                button.addEventListener("click", () => {
-                    const location = locations.find(
-                        item => item.id === button.dataset.locationId
-                    );
-
-                    if (location) {
-                        this.openLocation(location);
-                    }
-                });
-            });
-        };
-
-        const filterLocations = () => {
-            const query = ($("#mehestanLocationSearch")?.value || "")
-                .trim()
-                .toLowerCase();
-
-            const filtered = locations.filter(location => {
-                const categoryMatch =
-                    activeCategory === "all" ||
-                    location.category === activeCategory;
-
-                const textMatch =
-                    !query ||
-                    location.name.toLowerCase().includes(query);
-
-                return categoryMatch && textMatch;
-            });
-
-            renderMarkers(filtered);
-            renderResults(filtered);
-        };
-
-        $$(".mehestan-category-button").forEach(button => {
-            button.addEventListener("click", () => {
-                $$(".mehestan-category-button")
-                    .forEach(item => item.classList.remove("active"));
-
-                button.classList.add("active");
-                activeCategory = button.dataset.category;
-                filterLocations();
-            });
-        });
-
-        $("#mehestanLocationSearch")?.addEventListener(
-            "input",
-            filterLocations
-        );
-
-        $("#mehestanZoomIn")?.addEventListener("click", () => {
-            zoom = Math.min(zoom + 0.15, 2);
-            $("#mehestanMapMarkers").style.transform =
-                `scale(${zoom})`;
-        });
-
-        $("#mehestanZoomOut")?.addEventListener("click", () => {
-            zoom = Math.max(zoom - 0.15, 1);
-            $("#mehestanMapMarkers").style.transform =
-                `scale(${zoom})`;
-        });
-
-        $("#mehestanResetMap")?.addEventListener("click", () => {
-            zoom = 1;
-            $("#mehestanMapMarkers").style.transform = "scale(1)";
-        });
-
-        renderMarkers(locations);
-        renderResults(locations);
-
-        toast("نقشه شهر مهستان آماده شد.");
-    },
-
-    openLocation(location) {
-        toast(`در حال ورود به ${location.name}...`);
-
-        setTimeout(() => {
-            toast(`📍 ${location.name} آماده بررسی است.`);
-        }, 700);
-    }
-
-};
-
 function closeGame() {
 
         state.currentGame =
@@ -3539,6 +3121,267 @@ function closeGame() {
     function closeAdminPanel() {
 
         hide($("#adminModal"));
+    }
+
+
+    async function adminApiFetch(path, options = {}) {
+        const headers = {
+            ...(options.headers || {})
+        };
+
+        if (state.adminToken) {
+            headers["X-Admin-Token"] =
+                state.adminToken;
+        }
+
+        return fetch(
+            `${CONFIG.API_BASE}${path}`,
+            {
+                ...options,
+                headers
+            }
+        );
+    }
+
+
+    async function renderSpyWordsAdmin(content) {
+        content.innerHTML = `
+            <div class="admin-spy-words">
+                <div class="admin-spy-words-head">
+                    <div>
+                        <h3>🕵️ بانک کلمات Spy</h3>
+                        <p>مدیریت کلمات و Aliasهای بازی</p>
+                    </div>
+
+                    <button
+                        class="admin-spy-refresh"
+                        id="spyWordsRefresh"
+                        type="button"
+                    >
+                        🔄 تازه‌سازی
+                    </button>
+                </div>
+
+                <div class="admin-spy-stats">
+                    <div class="admin-stat">
+                        <span>📚</span>
+                        <strong id="spyWordsTotal">0</strong>
+                        <small>کل کلمات</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>🟢</span>
+                        <strong id="spyWordsEnabled">0</strong>
+                        <small>فعال</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>⚪</span>
+                        <strong id="spyWordsDisabled">0</strong>
+                        <small>غیرفعال</small>
+                    </div>
+                </div>
+
+                <div class="admin-spy-search">
+                    <input
+                        id="spyWordsSearch"
+                        type="search"
+                        placeholder="🔍 جستجوی کلمه یا Alias..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div id="spyWordsList">
+                    <div class="empty-activity">
+                        ⏳ در حال دریافت بانک کلمات...
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const refreshButton =
+            $("#spyWordsRefresh");
+
+        if (refreshButton) {
+            refreshButton.addEventListener(
+                "click",
+                () => renderSpyWordsAdmin(content)
+            );
+        }
+
+        try {
+            const words =
+                await loadSpyWords();
+
+            renderSpyWordsList(words);
+
+            const search =
+                $("#spyWordsSearch");
+
+            if (search) {
+                search.addEventListener(
+                    "input",
+                    () => {
+                        renderSpyWordsList(
+                            words,
+                            search.value
+                        );
+                    }
+                );
+            }
+
+        } catch (error) {
+            console.error(error);
+
+            const list =
+                $("#spyWordsList");
+
+            if (list) {
+                list.innerHTML = `
+                    <div class="empty-activity">
+                        ❌ ${escapeHtml(
+                            error.message ||
+                            "دریافت بانک کلمات ناموفق بود."
+                        )}
+                    </div>
+                `;
+            }
+        }
+    }
+
+
+    function renderSpyWordsList(words, searchText = "") {
+        const query =
+            String(searchText || "")
+                .trim()
+                .toLowerCase();
+
+        const filtered =
+            words.filter((item) => {
+                const word =
+                    String(item.word || "")
+                        .toLowerCase();
+
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases.join(" ").toLowerCase()
+                        : "";
+
+                return !query ||
+                    word.includes(query) ||
+                    aliases.includes(query);
+            });
+
+        const total =
+            words.length;
+
+        const enabled =
+            words.filter(
+                (item) => item.enabled
+            ).length;
+
+        const disabled =
+            total - enabled;
+
+        setText(
+            $("#spyWordsTotal"),
+            total
+        );
+
+        setText(
+            $("#spyWordsEnabled"),
+            enabled
+        );
+
+        setText(
+            $("#spyWordsDisabled"),
+            disabled
+        );
+
+        const list =
+            $("#spyWordsList");
+
+        if (!list) {
+            return;
+        }
+
+        if (!filtered.length) {
+            list.innerHTML = `
+                <div class="empty-activity">
+                    🔎 کلمه‌ای پیدا نشد.
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML =
+            filtered.map((item) => {
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases
+                        : [];
+
+                return `
+                    <div class="admin-spy-word-card">
+                        <div class="admin-spy-word-main">
+                            <strong>
+                                ${escapeHtml(item.word)}
+                            </strong>
+
+                            <span class="${
+                                item.enabled
+                                    ? "spy-word-enabled"
+                                    : "spy-word-disabled"
+                            }">
+                                ${
+                                    item.enabled
+                                        ? "🟢 فعال"
+                                        : "⚪ غیرفعال"
+                                }
+                            </span>
+                        </div>
+
+                        <div class="admin-spy-aliases">
+                            ${
+                                aliases.length
+                                    ? aliases.map(
+                                        (alias) =>
+                                            `<span>${escapeHtml(alias)}</span>`
+                                    ).join("")
+                                    : "<small>بدون Alias</small>"
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join("");
+    }
+
+
+    async function loadSpyWords() {
+        const response =
+            await adminApiFetch(
+                "/api/game/admin/spy-words"
+            );
+
+        if (!response.ok) {
+            let data = {};
+
+            try {
+                data = await response.json();
+            } catch (_) {}
+
+            throw new Error(
+                data.error ||
+                "دریافت بانک کلمات انجام نشد."
+            );
+        }
+
+        const data =
+            await response.json();
+
+        return Array.isArray(data.words)
+            ? data.words
+            : [];
     }
 
 
@@ -3628,6 +3471,11 @@ function closeGame() {
         if (tab === "dashboard") {
 
             await loadAdminDashboard();
+            return;
+        }
+
+        if (tab === "spy-words") {
+            await renderSpyWordsAdmin(content);
             return;
         }
 
@@ -3941,21 +3789,30 @@ function closeGame() {
 
 
         /* Games */
-        $$(".play-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                const game = button.dataset.game;
 
-                if (game === "spy") {
-                    SpyGameUI.open();
-                } else if (game === "mehestan") {
-                    MehestanGameUI.open();
-                } else if (typeof openGame === "function") {
-                    openGame(game);
-                } else {
-                    toast("این بازی هنوز آماده نشده است.");
-                }
+        $$(".play-button")
+            .forEach((button) => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        const game =
+                            button.dataset.game;
+
+                        if (game === "spy") {
+
+                            SpyGameUI.open();
+
+                        } else {
+
+                            openGame(
+                                game
+                            );
+                        }
+                    }
+                );
             });
-        });
 
 
         $("#closeGame")

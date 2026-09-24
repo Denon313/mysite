@@ -86,16 +86,6 @@ console.log("GAME_ROOM_APP_JS_LOADED");
             forbidden: {
                 title: "کلمه ممنوعه",
                 emoji: "🚫"
-            },
-
-            nature3d: {
-                title: "جنگل آرام",
-                emoji: "🌲"
-            },
-
-            mehestan: {
-                title: "مهستان",
-                emoji: "🕵️‍♂️"
             }
         }
     };
@@ -121,6 +111,7 @@ console.log("GAME_ROOM_APP_JS_LOADED");
         currentGame: null,
 
         pendingAdminLogin: false,
+        adminToken: null,
 
         initialized: false
     };
@@ -305,7 +296,13 @@ console.log("GAME_ROOM_APP_JS_LOADED");
                     return;
                 }
 
-                await verifyAdminPassword(username, password);
+                const adminLogin = await verifyAdminPassword(
+                    username,
+                    password
+                );
+
+                state.adminToken =
+                    adminLogin.admin_token || null;
             }
 
             state.currentUser = {
@@ -1828,31 +1825,48 @@ console.log("GAME_ROOM_APP_JS_LOADED");
 
 const SpyGameUI = {
     gameId: null,
+    phase: "lobby",
+    state: null,
     replyTo: null,
     selectedVote: null,
     messages: [],
-    lastPhase: null,
     boundSocket: null,
+    lobbyJoined: false,
+    gameJoined: false,
+    chatJoined: false,
+    tickTimer: null,
 
-    open(gameId = "spy-main-room") {
-        this.gameId = gameId || "spy-main-room";
-        this.replyTo = null;
-        this.selectedVote = null;
-        this.messages = [];
-        this.lastPhase = null;
+    open() {
+        this.resetLocal();
 
         state.currentGame = {
             type: "spy",
-            gameId: this.gameId,
+            gameId: null,
             data: null
         };
 
-        this.render();
-        this.bind();
-
+        this.renderLobby();
+        this.bindSocket();
         this.ensureSocket();
 
         return true;
+    },
+
+    resetLocal() {
+        this.gameId = null;
+        this.phase = "lobby";
+        this.state = null;
+        this.replyTo = null;
+        this.selectedVote = null;
+        this.messages = [];
+        this.lobbyJoined = false;
+        this.gameJoined = false;
+        this.chatJoined = false;
+
+        if (this.tickTimer) {
+            clearInterval(this.tickTimer);
+            this.tickTimer = null;
+        }
     },
 
     ensureSocket() {
@@ -1861,304 +1875,248 @@ const SpyGameUI = {
             return;
         }
 
-        if (
-            !state.socket ||
-            !state.socket.connected
-        ) {
-            if (
-                typeof connectSocket === "function"
-            ) {
+        if (!state.socket || !state.socket.connected) {
+            if (typeof connectSocket === "function") {
                 connectSocket();
             }
             return;
         }
 
-        this.enterRoom();
+        this.joinLobby();
     },
 
-    enterRoom() {
-        if (
-            !state.socket ||
-            !state.socket.connected ||
-            !state.currentUser
-        ) {
+    bindSocket() {
+        const socket = state.socket;
+
+        if (!socket || socket === this.boundSocket) {
             return;
         }
 
-        const username =
-            state.currentUser.username;
+        this.boundSocket = socket;
 
-        state.socket.emit(
-            "spy_create",
-            {
-                game_id: this.gameId,
-                username
+        socket.on("connect", () => {
+            if (
+                state.currentGame?.type === "spy" &&
+                !this.lobbyJoined &&
+                !this.gameJoined
+            ) {
+                this.joinLobby();
             }
-        );
-
-        state.socket.emit(
-            "spy_join",
-            {
-                game_id: this.gameId,
-                username
-            }
-        );
-
-        state.socket.emit(
-            "spy_join_chat",
-            {
-                game_id: this.gameId,
-                username
-            }
-        );
-
-        state.socket.emit(
-            "spy_chat_history",
-            {
-                game_id: this.gameId
-            }
-        );
-
-        state.socket.emit(
-            "spy_state",
-            {
-                game_id: this.gameId,
-                username
-            }
-        );
+        });
     },
 
-    render() {
-        const modal = $("#gameModal");
-
-        if (!modal) {
+    joinLobby() {
+        if (!state.socket?.connected || !state.currentUser) {
             return;
         }
 
-        modal.innerHTML = `
-            <div class="spy-v2">
-                <div class="spy-v2-header">
+        state.socket.emit("spy_join_lobby");
+        this.lobbyJoined = true;
+    },
+
+    renderLobby(data = null) {
+        this.phase = "lobby";
+
+        const players = Array.isArray(data?.players)
+            ? data.players
+            : [];
+
+        const host = data?.host || players[0] || null;
+        const me = state.currentUser?.username;
+
+        const rows = players.length
+            ? players.map((username, index) => `
+                <div class="spy-zero-player">
+                    <div class="spy-zero-avatar">
+                        ${(index + 1)}
+                    </div>
+                    <div class="spy-zero-player-info">
+                        <strong>${this.escape(
+                            this.displayName(username)
+                        )}</strong>
+                        ${
+                            username === host
+                                ? `<span class="spy-zero-host">میزبان</span>`
+                                : ""
+                        }
+                    </div>
+                    ${
+                        username === me
+                            ? `<span class="spy-zero-me">شما</span>`
+                            : ""
+                    }
+                </div>
+            `).join("")
+            : `
+                <div class="spy-zero-empty">
+                    <div>🕵️</div>
+                    <span>هنوز بازیکنی وارد نشده</span>
+                </div>
+            `;
+
+        const canStart =
+            host === me &&
+            players.length >= 1 &&
+            players.length <= 5;
+
+        this.setContent(`
+            <div class="spy-zero-screen">
+                <div class="spy-zero-top">
                     <div>
-                        <div class="spy-v2-title">
-                            🕵️ بازی جاسوس
-                        </div>
-                        <div id="spyStatus"
-                             class="spy-v2-subtitle">
-                            در حال اتصال...
-                        </div>
+                        <span class="spy-zero-label">SPY GAME</span>
+                        <h2>بازی جاسوس</h2>
+                        <p>بازیکن‌ها وارد اتاق می‌شوند.</p>
                     </div>
 
                     <button
+                        class="spy-zero-close"
                         type="button"
-                        id="spyClose"
-                        class="spy-v2-close"
-                    >×</button>
+                        data-spy-close
+                    >✕</button>
                 </div>
 
-                <div id="spyLobby"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyRole"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyTimer"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyPlayers"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyVoting"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyGuess"
-                     class="spy-v2-panel"></div>
-
-                <div id="spyResult"
-                     class="spy-v2-panel"></div>
-
-                <div class="spy-v2-chat">
-                    <div class="spy-v2-chat-head">
-                        <div>
-                            <strong>💬 گفت‌وگوی بازی</strong>
-                            <span id="spyNewMessage"
-                                  hidden>
-                                پیام جدید
-                            </span>
-                        </div>
+                <div class="spy-zero-card">
+                    <div class="spy-zero-card-head">
+                        <strong>بازیکن‌ها</strong>
+                        <span>${players.length}/5</span>
                     </div>
 
-                    <div
-                        id="spyMessages"
-                        class="spy-v2-messages"
-                    ></div>
-
-                    <div
-                        id="spyReply"
-                        class="spy-v2-reply"
-                        hidden
-                    >
-                        <div>
-                            <small>در پاسخ به</small>
-                            <strong id="spyReplyText"></strong>
-                        </div>
-
-                        <button
-                            type="button"
-                            id="spyCancelReply"
-                        >×</button>
-                    </div>
-
-                    <div class="spy-v2-input-row">
-                        <input
-                            id="spyInput"
-                            type="text"
-                            maxlength="1000"
-                            autocomplete="off"
-                            placeholder="پیامت رو بنویس..."
-                        >
-
-                        <button
-                            type="button"
-                            id="spySend"
-                            class="spy-v2-primary"
-                        >ارسال</button>
+                    <div class="spy-zero-players">
+                        ${rows}
                     </div>
                 </div>
+
+                <div class="spy-zero-status">
+                    ${
+                        players.length < 1
+                            ? "منتظر ورود بازیکن‌ها..."
+                            : host === me
+                                ? "شما میزبان هستید."
+                                : "منتظر شروع میزبان..."
+                    }
+                </div>
+
+                ${
+                    canStart
+                        ? `
+                            <button
+                                class="spy-zero-primary"
+                                type="button"
+                                data-spy-prepare
+                            >
+                                شروع و انتخاب زمان
+                            </button>
+                        `
+                        : ""
+                }
+
+                <button
+                    class="spy-zero-secondary"
+                    type="button"
+                    data-spy-leave-lobby
+                >
+                    خروج
+                </button>
             </div>
-        `;
+        `);
 
-        show(modal);
+        this.bindLobbyButtons();
     },
 
-    bind() {
-        $("#spyClose")?.addEventListener(
-            "click",
-            () => this.close()
-        );
-
-        $("#spySend")?.addEventListener(
-            "click",
-            () => this.sendChat()
-        );
-
-        $("#spyInput")?.addEventListener(
-            "keydown",
-            (event) => {
-                if (
-                    event.key === "Enter" &&
-                    !event.shiftKey
-                ) {
-                    event.preventDefault();
-                    this.sendChat();
-                }
-            }
-        );
-
-        $("#spyCancelReply")?.addEventListener(
+    bindLobbyButtons() {
+        this.q("[data-spy-prepare]")?.addEventListener(
             "click",
             () => {
-                this.replyTo = null;
-                this.renderReply();
+                state.socket?.emit("spy_prepare_start");
             }
         );
 
-        $("#spyNewMessage")?.addEventListener(
+        this.q("[data-spy-leave-lobby]")?.addEventListener(
             "click",
-            () => {
-                const box = $("#spyMessages");
+            () => this.leaveLobby()
+        );
 
-                if (box) {
-                    box.scrollTop =
-                        box.scrollHeight;
-                    box.classList.remove(
-                        "has-new"
-                    );
-                }
-
-                hide($("#spyNewMessage"));
-            }
+        this.q("[data-spy-close]")?.addEventListener(
+            "click",
+            () => this.leaveLobby()
         );
     },
 
-    renderLobby(data) {
-        const box = $("#spyLobby");
+    renderDuration() {
+        this.phase = "duration_selection";
 
-        if (!box) return;
+        this.setContent(`
+            <div class="spy-zero-screen spy-zero-centered">
+                <div class="spy-zero-top">
+                    <div>
+                        <span class="spy-zero-label">SPY GAME</span>
+                        <h2>زمان بحث</h2>
+                        <p>مدت زمان را برحسب ثانیه وارد کن.</p>
+                    </div>
 
-        const players =
-            Array.isArray(data.players)
-                ? data.players
-                : [];
+                    <button
+                        class="spy-zero-close"
+                        type="button"
+                        data-spy-close
+                    >✕</button>
+                </div>
 
-        const me =
-            state.currentUser?.username;
-
-        const isHost =
-            data.host === me ||
-            players.some(
-                p =>
-                    p.username === me &&
-                    p.is_host
-            );
-
-        if (data.phase !== "lobby") {
-            box.innerHTML = "";
-            return;
-        }
-
-        box.innerHTML = `
-            <div class="spy-v2-section-title">
-                انتظار بازیکن‌ها
-            </div>
-
-            <div class="spy-v2-count">
-                ${players.length}/${data.max_players || 5}
-            </div>
-
-            ${
-                isHost
-                    ? `
-                    <label class="spy-v2-label">
-                        زمان بحث، به ثانیه
+                <div class="spy-zero-duration-card">
+                    <label for="spyDuration">
+                        مدت زمان
                     </label>
 
                     <input
-                        id="spyDiscussion"
-                        class="spy-v2-number"
+                        id="spyDuration"
+                        class="spy-zero-duration-input"
                         type="number"
                         min="10"
                         max="1800"
                         value="120"
+                        inputmode="numeric"
                     >
 
+                    <div class="spy-zero-duration-hint">
+                        مثال: 120 ثانیه = ۲ دقیقه
+                    </div>
+
+                    <div class="spy-zero-presets">
+                        <button type="button" data-duration="60">۶۰</button>
+                        <button type="button" data-duration="120">۱۲۰</button>
+                        <button type="button" data-duration="180">۱۸۰</button>
+                        <button type="button" data-duration="300">۳۰۰</button>
+                    </div>
+
                     <button
+                        class="spy-zero-primary"
                         type="button"
-                        id="spyStart"
-                        class="spy-v2-primary spy-v2-wide"
+                        data-spy-start
                     >
                         شروع بازی
                     </button>
-                    `
-                    : `
-                    <div class="spy-v2-wait">
-                        منتظر سازنده بازی هستیم...
-                    </div>
-                    `
-            }
-        `;
+                </div>
+            </div>
+        `);
 
-        $("#spyStart")?.addEventListener(
+        this.q("[data-spy-close]")?.addEventListener(
+            "click",
+            () => this.close()
+        );
+
+        this.qa("[data-duration]").forEach(button => {
+            button.addEventListener("click", () => {
+                const input = this.q("#spyDuration");
+                if (input) {
+                    input.value = button.dataset.duration;
+                }
+            });
+        });
+
+        this.q("[data-spy-start]")?.addEventListener(
             "click",
             () => {
-                let seconds =
-                    Number(
-                        $("#spyDiscussion")?.value
-                        || 120
-                    );
-
-                if (!Number.isFinite(seconds)) {
-                    seconds = 120;
-                }
+                const input = this.q("#spyDuration");
+                let seconds = Number(input?.value || 120);
 
                 seconds = Math.max(
                     10,
@@ -2168,319 +2126,393 @@ const SpyGameUI = {
                     )
                 );
 
-                if (
-                    !state.socket?.connected
-                ) {
-                    toast(
-                        "اتصال به سرور برقرار نیست."
-                    );
-                    return;
+                if (input) {
+                    input.value = seconds;
                 }
 
-                state.socket.emit(
+                state.socket?.emit(
                     "spy_start",
                     {
                         game_id: this.gameId,
-                        username:
-                            state.currentUser.username,
-                        discussion_seconds:
-                            seconds
+                        seconds
                     }
                 );
             }
         );
     },
 
-    renderRole(data) {
-        const box = $("#spyRole");
+    renderGame(gameState = this.state) {
+        if (!gameState) return;
 
-        if (!box) return;
+        this.phase = gameState.phase || "discussion";
 
-        if (data.phase === "lobby") {
-            box.innerHTML = "";
+        if (this.phase === "duration_selection") {
+            this.renderDuration();
             return;
         }
-
-        if (data.my_role === "spy") {
-            box.innerHTML = `
-                <div class="spy-role spy-role-spy">
-                    <div class="spy-role-icon">🕵️</div>
-                    <strong>شما جاسوس هستید</strong>
-                    <span>
-                        کلمه را نمی‌بینی.
-                        سعی کن از صحبت‌ها بفهمی.
-                    </span>
-
-                    ${
-                        data.can_guess
-                            ? `
-                            <button
-                                type="button"
-                                id="spyGuessOpen"
-                                class="spy-v2-secondary spy-v2-wide"
-                            >
-                                کلمه رو فهمیدم
-                            </button>
-                            `
-                            : ""
-                    }
-                </div>
-            `;
-        } else if (data.my_role === "citizen") {
-            box.innerHTML = `
-                <div class="spy-role spy-role-citizen">
-                    <div class="spy-role-icon">👤</div>
-                    <strong>شهروند هستی</strong>
-                    <span>کلمه مخفی:</span>
-                    <b>${escapeHtml(
-                        data.secret_word || "—"
-                    )}</b>
-                </div>
-            `;
-        } else {
-            box.innerHTML = "";
-        }
-
-        $("#spyGuessOpen")?.addEventListener(
-            "click",
-            () => this.renderGuessForm()
-        );
-    },
-
-    renderTimer(data) {
-        const box = $("#spyTimer");
-
-        if (!box) return;
 
         if (
-            data.phase !== "discussion" &&
-            data.phase !== "voting"
+            this.phase === "finished" ||
+            this.phase === "spy_guess"
         ) {
-            box.innerHTML = "";
+            this.renderResult(gameState);
             return;
         }
 
-        const seconds = Math.max(
-            0,
-            Number(
-                data.remaining_seconds || 0
-            )
-        );
+        if (this.phase === "voting") {
+            this.renderVoting(gameState);
+            return;
+        }
 
-        const title =
-            data.phase === "discussion"
-                ? "💬 زمان بحث"
-                : "🗳️ زمان رأی‌گیری";
-
-        box.innerHTML = `
-            <div class="spy-timer">
-                <span>${title}</span>
-                <strong>${seconds}</strong>
-                <small>ثانیه</small>
-            </div>
-        `;
+        this.renderDiscussion(gameState);
     },
 
-    renderPlayers(data) {
-        const box = $("#spyPlayers");
+    renderDiscussion(data) {
+        const role = data?.role;
+        const word = data?.secret_word;
+        const players = Array.isArray(data?.players)
+            ? data.players
+            : [];
 
-        if (!box) return;
-
-        const players =
-            Array.isArray(data.players)
-                ? data.players
-                : [];
-
-        if (!players.length) {
-            box.innerHTML = "";
-            return;
-        }
-
-        box.innerHTML = `
-            <div class="spy-v2-section-title">
-                بازیکن‌ها
-            </div>
-
-            <div class="spy-player-list">
-                ${players.map(player => `
-                    <div class="spy-player">
-                        <span>
-                            ${
-                                player.is_host
-                                    ? "👑 "
-                                    : "🎮 "
-                            }
-                            ${escapeHtml(
-                                player.username
-                            )}
-                        </span>
-
-                        <span>
-                            ${
-                                player.connected
-                                    ? "🟢"
-                                    : "🔴"
-                            }
-                        </span>
+        this.setContent(`
+            <div class="spy-zero-chat-screen">
+                <header class="spy-zero-chat-header">
+                    <div class="spy-zero-chat-title">
+                        <span class="spy-zero-label">SPY GAME</span>
+                        <strong>اتاق بحث</strong>
                     </div>
-                `).join("")}
+
+                    <div class="spy-zero-timer" id="spyZeroTimer">
+                        ${this.formatSeconds(
+                            data?.remaining_seconds
+                        )}
+                    </div>
+
+                    <button
+                        class="spy-zero-header-close"
+                        type="button"
+                        data-spy-close
+                    >✕</button>
+                </header>
+
+                <div class="spy-zero-role-strip">
+                    <div>
+                        <span>نقش شما</span>
+                        <strong>
+                            ${
+                                role === "spy"
+                                    ? "🕵️ جاسوس"
+                                    : "👤 شهروند"
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="spy-zero-word-box">
+                        <span>کلمه</span>
+                        <strong>
+                            ${
+                                role === "spy"
+                                    ? "مخفی"
+                                    : this.escape(word || "—")
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="spy-zero-count">
+                        👥 ${players.length}
+                    </div>
+                </div>
+
+                <div
+                    class="spy-zero-messages"
+                    id="spyZeroMessages"
+                >
+                    ${this.renderMessages()}
+                </div>
+
+                <div
+                    class="spy-zero-reply"
+                    id="spyZeroReply"
+                    hidden
+                ></div>
+
+                <form
+                    class="spy-zero-chat-input"
+                    id="spyZeroChatForm"
+                >
+                    <input
+                        id="spyZeroMessageInput"
+                        type="text"
+                        autocomplete="off"
+                        maxlength="1000"
+                        placeholder="پیامت رو بنویس..."
+                    >
+
+                    <button type="submit">
+                        ➤
+                    </button>
+                </form>
             </div>
-        `;
+        `);
+
+        this.bindChat();
+        this.scrollMessages(true);
+        this.updateTimer(data);
     },
 
     renderVoting(data) {
-        const box = $("#spyVoting");
+        const players = Array.isArray(data?.players)
+            ? data.players
+            : [];
 
-        if (!box) return;
+        this.setContent(`
+            <div class="spy-zero-chat-screen spy-zero-voting-screen">
+                <header class="spy-zero-chat-header">
+                    <div class="spy-zero-chat-title">
+                        <span class="spy-zero-label">SPY GAME</span>
+                        <strong>رأی‌گیری</strong>
+                    </div>
 
-        if (data.phase !== "voting") {
-            box.innerHTML = "";
-            return;
-        }
+                    <div class="spy-zero-timer" id="spyZeroTimer">
+                        ${this.formatSeconds(
+                            data?.remaining_seconds
+                        )}
+                    </div>
 
-        const players =
-            Array.isArray(data.players)
-                ? data.players
-                : [];
+                    <button
+                        class="spy-zero-header-close"
+                        type="button"
+                        data-spy-close
+                    >✕</button>
+                </header>
 
-        const me =
-            state.currentUser?.username;
-
-        box.innerHTML = `
-            <div class="spy-vote-card">
-                <div class="spy-v2-section-title">
-                    چه کسی جاسوس است؟
+                <div class="spy-zero-vote-intro">
+                    <strong>به کسی که فکر می‌کنی جاسوسه رأی بده.</strong>
+                    <span>رأی‌ها تا پایان مخفی می‌مانند.</span>
                 </div>
 
-                <div class="spy-vote-list">
-                    ${players
-                        .filter(
-                            p =>
-                                p.username !== me
-                        )
-                        .map(player => `
+                <div class="spy-zero-vote-list">
+                    ${
+                        players.map(username => `
                             <button
                                 type="button"
-                                class="
-                                    spy-vote-button
-                                    ${
-                                        this.selectedVote ===
-                                        player.username
-                                            ? "selected"
-                                            : ""
-                                    }
-                                "
-                                data-spy-vote="${escapeHtml(
-                                    player.username
+                                class="spy-zero-vote-button ${
+                                    this.selectedVote === username
+                                        ? "selected"
+                                        : ""
+                                }"
+                                data-vote="${this.escape(
+                                    username
                                 )}"
                             >
-                                <span>🎮</span>
-                                ${escapeHtml(
-                                    player.username
-                                )}
+                                <span class="spy-zero-vote-avatar">
+                                    👤
+                                </span>
+
+                                <span>
+                                    ${this.escape(
+                                        this.displayName(username)
+                                    )}
+                                </span>
+
+                                ${
+                                    this.selectedVote === username
+                                        ? `<b>✓</b>`
+                                        : ""
+                                }
                             </button>
-                        `)
-                        .join("")}
+                        `).join("")
+                    }
                 </div>
 
-                <div class="spy-vote-note">
-                    می‌تونی تا پایان ۱۰ ثانیه رأی خودت رو تغییر بدی.
+                <div class="spy-zero-vote-note">
+                    می‌توانی تا پایان زمان رأی خودت را تغییر بدهی.
                 </div>
             </div>
-        `;
+        `);
 
-        box
-            .querySelectorAll(
-                "[data-spy-vote]"
-            )
-            .forEach(button => {
-                button.addEventListener(
-                    "click",
-                    () => {
-                        const target =
-                            button.dataset.spyVote;
+        this.q("[data-spy-close]")?.addEventListener(
+            "click",
+            () => this.close()
+        );
 
-                        this.selectedVote = target;
+        this.qa("[data-vote]").forEach(button => {
+            button.addEventListener("click", () => {
+                const username = button.dataset.vote;
 
-                        state.socket?.emit(
-                            "spy_vote",
-                            {
-                                game_id:
-                                    this.gameId,
-                                username:
-                                    state.currentUser
-                                        ?.username,
-                                target
-                            }
-                        );
+                this.selectedVote = username;
 
-                        this.renderVoting(
-                            data
-                        );
+                state.socket?.emit(
+                    "spy_vote",
+                    {
+                        game_id: this.gameId,
+                        username
                     }
                 );
+
+                this.renderVoting({
+                    ...this.state,
+                    ...data
+                });
             });
+        });
+
+        this.updateTimer(data);
     },
 
-    renderGuessForm() {
-        const box = $("#spyGuess");
+    renderResult(data) {
+        const result = data?.result || data || {};
+        const phase = data?.phase || this.phase;
 
-        if (!box) return;
+        const waitingGuess =
+            phase === "spy_guess" ||
+            result?.phase === "spy_guess";
 
-        box.innerHTML = `
-            <div class="spy-guess-card">
-                <div class="spy-v2-section-title">
-                    حدس کلمه
+        const winner = result?.winner || data?.winner;
+        const spy = result?.spy_username || data?.spy_username;
+        const word = result?.secret_word || data?.secret_word;
+
+        this.setContent(`
+            <div class="spy-zero-result-screen">
+                <div class="spy-zero-result-top">
+                    <button
+                        type="button"
+                        class="spy-zero-back"
+                        data-spy-close
+                    >
+                        ← بازگشت
+                    </button>
+
+                    <span class="spy-zero-label">
+                        SPY GAME
+                    </span>
                 </div>
 
-                <input
-                    id="spyGuessInput"
-                    type="text"
-                    maxlength="100"
-                    class="spy-v2-text"
-                    placeholder="کلمه‌ای که فکر می‌کنی..."
-                >
+                <div class="spy-zero-result-content">
+                    <div class="spy-zero-result-icon">
+                        ${
+                            waitingGuess
+                                ? "🕵️"
+                                : winner === "spy"
+                                    ? "🕵️"
+                                    : "🎉"
+                        }
+                    </div>
 
-                <div class="spy-v2-actions">
-                    <button
-                        type="button"
-                        id="spyGuessCancel"
-                        class="spy-v2-muted"
-                    >
-                        برگشت
-                    </button>
+                    <h2>
+                        ${
+                            waitingGuess
+                                ? "جاسوس پیدا شد!"
+                                : winner === "spy"
+                                    ? "جاسوس برنده شد"
+                                    : "شهروندها برنده شدند"
+                        }
+                    </h2>
 
-                    <button
-                        type="button"
-                        id="spyGuessSubmit"
-                        class="spy-v2-primary"
-                    >
-                        ثبت حدس
-                    </button>
+                    <p class="spy-zero-result-sub">
+                        ${
+                            waitingGuess
+                                ? "حالا جاسوس یک فرصت برای حدس کلمه دارد."
+                                : "نتیجه این دور مشخص شد."
+                        }
+                    </p>
+
+                    <div class="spy-zero-result-grid">
+                        <div>
+                            <span>جاسوس</span>
+                            <strong>
+                                ${this.escape(
+                                    this.displayName(spy)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>کلمه</span>
+                            <strong>
+                                ${this.escape(word || "—")}
+                            </strong>
+                        </div>
+                    </div>
+
+                    ${
+                        waitingGuess
+                            ? `
+                                <form
+                                    id="spyZeroGuessForm"
+                                    class="spy-zero-guess"
+                                >
+                                    <input
+                                        id="spyZeroGuessInput"
+                                        type="text"
+                                        maxlength="100"
+                                        autocomplete="off"
+                                        placeholder="حدس جاسوس..."
+                                    >
+
+                                    <button type="submit">
+                                        ثبت حدس
+                                    </button>
+                                </form>
+                            `
+                            : `
+                                ${
+                                    result?.spy_guess
+                                        ? `
+                                            <div class="spy-zero-guess-result">
+                                                <span>حدس جاسوس</span>
+                                                <strong>
+                                                    ${this.escape(
+                                                        result.spy_guess
+                                                    )}
+                                                </strong>
+                                            </div>
+                                        `
+                                        : ""
+                                }
+
+                                <button
+                                    type="button"
+                                    class="spy-zero-primary"
+                                    data-spy-replay
+                                >
+                                    بازی مجدد
+                                </button>
+                            `
+                    }
                 </div>
             </div>
-        `;
+        `);
 
-        $("#spyGuessCancel")?.addEventListener(
+        this.q("[data-spy-close]")?.addEventListener(
+            "click",
+            () => this.close()
+        );
+
+        this.q("[data-spy-replay]")?.addEventListener(
             "click",
             () => {
-                box.innerHTML = "";
+                state.socket?.emit(
+                    "spy_replay",
+                    {
+                        game_id: this.gameId
+                    }
+                );
             }
         );
 
-        $("#spyGuessSubmit")?.addEventListener(
-            "click",
-            () => {
-                const input =
-                    $("#spyGuessInput");
+        this.q("#spyZeroGuessForm")?.addEventListener(
+            "submit",
+            event => {
+                event.preventDefault();
 
-                const guess =
-                    input?.value.trim();
+                const input = this.q("#spyZeroGuessInput");
+                const guess = String(
+                    input?.value || ""
+                ).trim();
 
                 if (!guess) {
-                    toast(
-                        "حدست رو وارد کن."
-                    );
+                    toast("حدست رو وارد کن.");
                     return;
                 }
 
@@ -2488,97 +2520,350 @@ const SpyGameUI = {
                     "spy_guess",
                     {
                         game_id: this.gameId,
-                        username:
-                            state.currentUser
-                                ?.username,
                         guess
                     }
                 );
             }
         );
-
-        $("#spyGuessInput")?.focus();
     },
 
-    renderResult(result) {
-        const box = $("#spyResult");
-
-        if (!box || !result) return;
-
-        const winner =
-            result.winner === "spy"
-                ? "جاسوس"
-                : "شهروندها";
-
-        box.innerHTML = `
-            <div class="spy-result">
-                <div class="spy-result-icon">
-                    ${
-                        result.winner === "spy"
-                            ? "🕵️"
-                            : "🎉"
-                    }
+    renderMessages() {
+        if (!this.messages.length) {
+            return `
+                <div class="spy-zero-chat-empty">
+                    <div>💬</div>
+                    <span>هنوز پیامی ارسال نشده.</span>
                 </div>
+            `;
+        }
 
-                <strong>
-                    برنده: ${winner}
-                </strong>
+        return this.messages.map(message => {
+            const mine =
+                message.username ===
+                state.currentUser?.username;
 
-                <span>
-                    ${escapeHtml(
-                        result.reason || ""
-                    )}
-                </span>
+            const reply =
+                message.reply_to &&
+                this.messages.find(
+                    item =>
+                        String(item.id) ===
+                        String(message.reply_to)
+                );
 
-                <div class="spy-result-details">
-                    <div>
-                        جاسوس:
-                        <b>${escapeHtml(
-                            result.spy || "—"
-                        )}</b>
-                    </div>
-
-                    <div>
-                        کلمه:
-                        <b>${escapeHtml(
-                            result.secret_word || "—"
-                        )}</b>
-                    </div>
-
+            return `
+                <div
+                    class="spy-zero-message ${mine ? "mine" : ""}"
+                    data-message-id="${this.escape(
+                        String(message.id || "")
+                    )}"
+                >
                     ${
-                        result.eliminated
+                        reply
                             ? `
-                            <div>
-                                انتخاب‌شده:
-                                <b>${escapeHtml(
-                                    result.eliminated
-                                )}</b>
-                            </div>
+                                <div class="spy-zero-message-reply">
+                                    ↩ ${this.escape(
+                                        reply.display_name ||
+                                        this.displayName(
+                                            reply.username
+                                        )
+                                    )}
+                                </div>
                             `
                             : ""
                     }
+
+                    <div class="spy-zero-message-meta">
+                        <strong>
+                            ${this.escape(
+                                message.display_name ||
+                                this.displayName(
+                                    message.username
+                                )
+                            )}
+                        </strong>
+
+                        ${
+                            message.created_at
+                                ? `<span>${this.formatMessageTime(
+                                    message.created_at
+                                )}</span>`
+                                : ""
+                        }
+                    </div>
+
+                    <div class="spy-zero-message-body">
+                        ${this.escape(
+                            message.message || ""
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
+                        class="spy-zero-reply-button"
+                        data-reply-id="${this.escape(
+                            String(message.id || "")
+                        )}"
+                    >
+                        پاسخ
+                    </button>
                 </div>
-            </div>
-        `;
+            `;
+        }).join("");
     },
 
-    setStatus(text, seconds = null) {
-        const box = $("#spyStatus");
+    bindChat() {
+        const form = this.q("#spyZeroChatForm");
+        const input = this.q("#spyZeroMessageInput");
+
+        form?.addEventListener(
+            "submit",
+            event => {
+                event.preventDefault();
+
+                const message =
+                    String(input?.value || "").trim();
+
+                if (!message) return;
+
+                state.socket?.emit(
+                    "spy_chat",
+                    {
+                        game_id: this.gameId,
+                        message,
+                        reply_to: this.replyTo
+                    }
+                );
+
+                input.value = "";
+                this.clearReply();
+            }
+        );
+
+        this.qa("[data-reply-id]").forEach(button => {
+            button.addEventListener("click", () => {
+                this.replyTo =
+                    button.dataset.replyId || null;
+
+                const message =
+                    this.messages.find(
+                        item =>
+                            String(item.id) ===
+                            String(this.replyTo)
+                    );
+
+                const box = this.q("#spyZeroReply");
+
+                if (!box) return;
+
+                box.hidden = false;
+
+                box.innerHTML = `
+                    ↩ پاسخ به
+                    <strong>
+                        ${this.escape(
+                            message?.display_name ||
+                            this.displayName(
+                                message?.username
+                            )
+                        )}
+                    </strong>
+
+                    <button
+                        type="button"
+                        data-clear-reply
+                    >✕</button>
+                `;
+
+                this.q("[data-clear-reply]")?.addEventListener(
+                    "click",
+                    () => this.clearReply()
+                );
+
+                input?.focus();
+            });
+        });
+
+        this.q("[data-spy-close]")?.addEventListener(
+            "click",
+            () => this.close()
+        );
+    },
+
+    clearReply() {
+        this.replyTo = null;
+
+        const box = this.q("#spyZeroReply");
+
+        if (box) {
+            box.hidden = true;
+            box.innerHTML = "";
+        }
+    },
+
+    handleChatHistory(data) {
+        this.messages =
+            Array.isArray(data)
+                ? data
+                : Array.isArray(data?.messages)
+                    ? data.messages
+                    : [];
+
+        if (
+            this.phase === "discussion" &&
+            this.q("#spyZeroMessages")
+        ) {
+            const box = this.q("#spyZeroMessages");
+            box.innerHTML = this.renderMessages();
+            this.bindMessageReplies();
+            this.scrollMessages(true);
+        }
+    },
+
+    handleChatMessage(data) {
+        if (!data) return;
+
+        if (
+            data.game_id &&
+            this.gameId &&
+            String(data.game_id) !== String(this.gameId)
+        ) {
+            return;
+        }
+
+        const id = data.id;
+
+        if (
+            id &&
+            this.messages.some(
+                item => String(item.id) === String(id)
+            )
+        ) {
+            return;
+        }
+
+        this.messages.push(data);
+
+        const box = this.q("#spyZeroMessages");
 
         if (!box) return;
 
-        box.textContent =
-            seconds === null
-                ? text
-                : `${text} • ${seconds} ثانیه`;
+        const wasBottom =
+            box.scrollHeight -
+            box.scrollTop -
+            box.clientHeight < 120;
+
+        box.innerHTML = this.renderMessages();
+        this.bindMessageReplies();
+
+        if (wasBottom) {
+            this.scrollMessages(true);
+        }
     },
 
-    renderState(data) {
+    bindMessageReplies() {
+        this.qa("[data-reply-id]").forEach(button => {
+            button.addEventListener("click", () => {
+                this.replyTo =
+                    button.dataset.replyId || null;
+
+                const message =
+                    this.messages.find(
+                        item =>
+                            String(item.id) ===
+                            String(this.replyTo)
+                    );
+
+                const box = this.q("#spyZeroReply");
+
+                if (!box) return;
+
+                box.hidden = false;
+
+                box.innerHTML = `
+                    ↩ پاسخ به
+                    <strong>
+                        ${this.escape(
+                            message?.display_name ||
+                            this.displayName(
+                                message?.username
+                            )
+                        )}
+                    </strong>
+
+                    <button
+                        type="button"
+                        data-clear-reply
+                    >✕</button>
+                `;
+
+                this.q("[data-clear-reply]")?.addEventListener(
+                    "click",
+                    () => this.clearReply()
+                );
+
+                this.q("#spyZeroMessageInput")?.focus();
+            });
+        });
+    },
+
+    scrollMessages(force = false) {
+        const box = this.q("#spyZeroMessages");
+
+        if (!box) return;
+
+        if (force) {
+            box.scrollTop = box.scrollHeight;
+        }
+    },
+
+    updateTimer(data) {
+        const timer = this.q("#spyZeroTimer");
+
+        if (!timer) return;
+
+        const seconds = Number(
+            data?.remaining_seconds ?? 0
+        );
+
+        timer.textContent =
+            this.formatSeconds(seconds);
+    },
+
+    handleTick(data) {
+        if (!data) return;
+
+        this.updateTimer(data);
+
+        if (
+            data.phase &&
+            data.phase !== this.phase
+        ) {
+            this.phase = data.phase;
+
+            if (
+                data.phase === "voting" ||
+                data.phase === "finished" ||
+                data.phase === "spy_guess"
+            ) {
+                this.state = {
+                    ...(this.state || {}),
+                    ...data
+                };
+
+                if (data.phase === "voting") {
+                    this.selectedVote = data.my_vote || null;
+                }
+
+                this.renderGame(this.state);
+            }
+        }
+    },
+
+    handleState(data) {
         if (!data) return;
 
         if (data.game_id) {
-            this.gameId =
-                data.game_id;
+            this.gameId = data.game_id;
 
             if (state.currentGame) {
                 state.currentGame.gameId =
@@ -2586,888 +2871,200 @@ const SpyGameUI = {
             }
         }
 
-        this.lastPhase =
-            data.phase;
-
-        this.renderLobby(data);
-        this.renderRole(data);
-        this.renderTimer(data);
-        this.renderPlayers(data);
-
-        if (data.phase === "voting") {
-            this.renderVoting(data);
-        } else {
-            $("#spyVoting").innerHTML = "";
-        }
-
-        if (data.phase === "finished") {
-            this.renderResult(
-                data.result
-            );
-        }
-
-        const labels = {
-            lobby: "در انتظار بازیکن‌ها",
-            discussion: "💬 مرحله بحث",
-            voting: "🗳️ مرحله رأی‌گیری",
-            finished: "🏁 بازی تمام شد"
+        this.state = {
+            ...(this.state || {}),
+            ...data
         };
 
-        this.setStatus(
-            labels[data.phase]
-                || "بازی جاسوس"
-        );
-    },
-
-    renderReply() {
-        const box = $("#spyReply");
-        const text = $("#spyReplyText");
-
-        if (!box || !text) return;
-
-        if (!this.replyTo) {
-            box.hidden = true;
-            text.textContent = "";
-            return;
-        }
-
-        box.hidden = false;
-
-        text.textContent =
-            this.replyTo.username
-                ? `${this.replyTo.username}: ${this.replyTo.message}`
-                : this.replyTo.message;
-    },
-
-    sendChat() {
-        const input = $("#spyInput");
-
-        if (!input) return;
-
-        const message =
-            input.value.trim();
-
-        if (!message) return;
+        this.phase = data.phase || this.phase;
 
         if (
+            this.phase === "discussion" &&
+            !this.chatJoined
+        ) {
+            this.joinChat();
+        }
+
+        this.renderGame(this.state);
+    },
+
+    joinChat() {
+        if (
+            !this.gameId ||
             !state.socket?.connected
         ) {
-            toast(
-                "اتصال به سرور برقرار نیست."
-            );
             return;
         }
 
         state.socket.emit(
-            "spy_chat",
+            "spy_join_chat",
             {
-                game_id: this.gameId,
-                username:
-                    state.currentUser?.username,
-                message,
-                reply_to:
-                    this.replyTo?.id || null
+                game_id: this.gameId
             }
         );
 
-        input.value = "";
-        this.replyTo = null;
-        this.renderReply();
+        this.chatJoined = true;
     },
 
-    renderChatHistory(messages) {
-        this.messages =
-            Array.isArray(messages)
-                ? messages
-                : [];
-
-        const box = $("#spyMessages");
-
-        if (!box) return;
-
-        box.innerHTML = "";
-
-        this.messages.forEach(
-            message => {
-                this.renderChatMessage(
-                    message,
-                    false
-                );
-            }
-        );
-
-        box.scrollTop =
-            box.scrollHeight;
-    },
-
-    renderChatMessage(
-        data,
-        autoScroll = true
-    ) {
-        const box = $("#spyMessages");
-
-        if (!box || !data) return;
-
-        const item =
-            document.createElement("div");
-
-        item.className =
-            "spy-message";
-
+    joinGame(gameId) {
         if (
-            data.username ===
-            state.currentUser?.username
+            !gameId ||
+            !state.socket?.connected
         ) {
-            item.classList.add("mine");
+            return;
         }
 
-        const reply =
-            data.reply_to
-                ? `
-                    <button
-                        type="button"
-                        class="spy-message-reply"
-                        data-jump-reply
-                        data-jump-id="${escapeHtml(
-                            data.reply_to
-                        )}"
-                    >
-                        ↩ پاسخ به پیام
-                    </button>
-                `
-                : "";
+        this.gameId = gameId;
 
-        item.dataset.messageId =
-            data.id || "";
+        if (state.currentGame) {
+            state.currentGame.gameId = gameId;
+        }
 
-        item.innerHTML = `
-            <div class="spy-message-head">
-                <strong>
-                    ${escapeHtml(
-                        data.username || "کاربر"
-                    )}
-                </strong>
-            </div>
-
-            ${reply}
-
-            <div class="spy-message-text">
-                ${escapeHtml(
-                    data.message || ""
-                )}
-            </div>
-
-            <button
-                type="button"
-                class="spy-message-action"
-                data-reply
-            >
-                پاسخ
-            </button>
-        `;
-
-        item
-            .querySelector("[data-reply]")
-            ?.addEventListener(
-                "click",
-                () => {
-                    this.replyTo = {
-                        id: data.id,
-                        username:
-                            data.username,
-                        message:
-                            data.message
-                    };
-
-                    this.renderReply();
-                    $("#spyInput")?.focus();
-                }
-            );
-
-        item
-            .querySelector("[data-jump-reply]")
-            ?.addEventListener(
-                "click",
-                () => {
-                    const id =
-                        item
-                            .querySelector(
-                                "[data-jump-reply]"
-                            )
-                            ?.dataset.jumpId;
-
-                    if (!id) return;
-
-                    const target =
-                        box.querySelector(
-                            `[data-message-id="${CSS.escape(id)}"]`
-                        );
-
-                    target?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center"
-                    });
-                }
-            );
-
-        box.appendChild(item);
-
-        if (autoScroll) {
-            const nearBottom =
-                box.scrollHeight -
-                box.scrollTop -
-                box.clientHeight < 120;
-
-            if (nearBottom) {
-                box.scrollTop =
-                    box.scrollHeight;
+        state.socket.emit(
+            "spy_join",
+            {
+                game_id: gameId
             }
+        );
+
+        this.gameJoined = true;
+    },
+
+    leaveLobby() {
+        if (state.socket?.connected) {
+            state.socket.emit("spy_leave_lobby");
         }
+
+        this.lobbyJoined = false;
+        this.close();
     },
 
     close() {
-        if (
-            state.socket?.connected
-        ) {
-            state.socket.emit(
-                "spy_leave",
-                {
-                    game_id: this.gameId,
-                    username:
-                        state.currentUser
-                            ?.username
-                }
-            );
+        if (state.socket?.connected) {
+            if (this.gameId) {
+                state.socket.emit(
+                    "spy_leave",
+                    {
+                        game_id: this.gameId
+                    }
+                );
+            } else if (this.lobbyJoined) {
+                state.socket.emit(
+                    "spy_leave_lobby"
+                );
+            }
         }
+
+        this.resetLocal();
 
         state.currentGame = null;
 
-        hide($("#gameModal"));
+        const modal = $("#gameModal");
+
+        modal?.classList.remove(
+            "spy-game-active",
+            "spy-chat-fullscreen"
+        );
+
+        hide(modal);
+    },
+
+    setContent(html) {
+        const modal = $("#gameModal");
+        const content = $("#gameContent");
+
+        if (!content) return;
+
+        modal?.classList.add("spy-game-active");
+
+        content.innerHTML = html;
+
+        show(modal);
+    },
+
+    displayName(username) {
+        if (!username) return "بازیکن";
+
+        const players =
+            state.players ||
+            state.connectedUsers ||
+            [];
+
+        const item =
+            Array.isArray(players)
+                ? players.find(
+                    player =>
+                        player.username === username ||
+                        player.id === username
+                )
+                : null;
+
+        return (
+            item?.display_name ||
+            item?.displayName ||
+            username
+        );
+    },
+
+    formatSeconds(seconds) {
+        const value = Math.max(
+            0,
+            Number(seconds || 0)
+        );
+
+        const minutes =
+            Math.floor(value / 60);
+
+        const secs =
+            value % 60;
+
+        return `${String(minutes).padStart(2, "0")}:${String(
+            secs
+        ).padStart(2, "0")}`;
+    },
+
+    formatMessageTime(value) {
+        try {
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return "";
+            }
+
+            return date.toLocaleTimeString(
+                "fa-IR",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            );
+        } catch {
+            return "";
+        }
+    },
+
+    escape(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    },
+
+    q(selector) {
+        return document.querySelector(selector);
+    },
+
+    qa(selector) {
+        return Array.from(
+            document.querySelectorAll(selector)
+        );
     }
 };
 
 
-/* ============================================================
-   SPY SOCKET EVENTS
-   ============================================================ */
 
-function setupSpySocketListeners() {
-    const socket = state.socket;
-
-    if (
-        !socket ||
-        socket === SpyGameUI.boundSocket
-    ) {
-        return;
-    }
-
-    SpyGameUI.boundSocket =
-        socket;
-
-    socket.on(
-        "connect",
-        () => {
-            if (
-                state.currentGame?.type ===
-                "spy"
-            ) {
-                SpyGameUI.enterRoom();
-            }
-        }
-    );
-
-    socket.on(
-        "spy_created",
-        data => {
-            SpyGameUI.renderState(
-                data
-            );
-        }
-    );
-
-    socket.on(
-        "spy_joined",
-        data => {
-            SpyGameUI.renderState(
-                data
-            );
-        }
-    );
-
-    socket.on(
-        "spy_state",
-        data => {
-            SpyGameUI.renderState(
-                data
-            );
-        }
-    );
-
-    socket.on(
-        "spy_started",
-        () => {
-            socket.emit(
-                "spy_state",
-                {
-                    game_id:
-                        SpyGameUI.gameId,
-                    username:
-                        state.currentUser
-                            ?.username
-                }
-            );
-        }
-    );
-
-    socket.on(
-        "spy_tick",
-        data => {
-            if (!data) return;
-
-            SpyGameUI.renderTimer(
-                data
-            );
-
-            if (
-                data.phase === "voting"
-            ) {
-                SpyGameUI.renderVoting(
-                    {
-                        ...data,
-                        players:
-                            state.currentGame
-                                ?.data
-                                ?.players || []
-                    }
-                );
-            }
-
-            if (
-                data.phase === "finished"
-            ) {
-                SpyGameUI.renderResult(
-                    data.result
-                );
-            }
-        }
-    );
-
-    socket.on(
-        "spy_voting_started",
-        data => {
-            SpyGameUI.selectedVote =
-                null;
-
-            SpyGameUI.renderState(
-                {
-                    ...data,
-                    phase: "voting"
-                }
-            );
-        }
-    );
-
-    socket.on(
-        "spy_vote",
-        data => {
-            if (
-                data?.username ===
-                state.currentUser?.username
-            ) {
-                toast(
-                    "✅ رأی ثبت شد."
-                );
-            }
-        }
-    );
-
-    socket.on(
-        "spy_finished",
-        data => {
-            SpyGameUI.renderResult(
-                data
-            );
-
-            SpyGameUI.renderState(
-                {
-                    ...data,
-                    phase: "finished",
-                    result: data
-                }
-            );
-        }
-    );
-
-    socket.on(
-        "spy_chat_history",
-        data => {
-            SpyGameUI.renderChatHistory(
-                Array.isArray(data)
-                    ? data
-                    : data?.messages || []
-            );
-        }
-    );
-
-    socket.on(
-        "spy_chat",
-        data => {
-            const box =
-                $("#spyMessages");
-
-            if (!box) return;
-
-            const nearBottom =
-                box.scrollHeight -
-                box.scrollTop -
-                box.clientHeight < 120;
-
-            SpyGameUI.renderChatMessage(
-                data,
-                nearBottom
-            );
-
-            if (!nearBottom) {
-                box.classList.add(
-                    "has-new"
-                );
-
-                show(
-                    $("#spyNewMessage")
-                );
-            }
-        }
-    );
-
-    socket.on(
-        "spy_error",
-        data => {
-            toast(
-                data?.message ||
-                data?.error ||
-                "خطایی در بازی جاسوس رخ داد."
-            );
-        }
-    );
-}
-
-setupSpySocketListeners();
-
-
-
-/* =====================================================
-   MEHESTAN GAME UI
-   ===================================================== */
-
-const MehestanGameUI = {
-
-    open() {
-        state.currentGame = {
-            type: "mehestan",
-            gameId: null,
-            data: null
-        };
-
-        const content = $("#gameContent");
-
-        if (!content) {
-            toast("محیط مهستان پیدا نشد.");
-            return;
-        }
-
-        content.innerHTML = `
-            <div class="mehestan-shell">
-
-                <div class="mehestan-header">
-                    <div class="mehestan-header-icon">🕵️‍♂️</div>
-
-                    <div>
-                        <div class="mehestan-title">پرونده مرموز — شهر مهستان</div>
-                        <div class="mehestan-subtitle">
-                            واحد تحقیقات جنایی
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mehestan-intro">
-
-                    <div class="mehestan-case-badge">
-                        پرونده شماره M-001
-                    </div>
-
-                    <h1>پرونده قتل در شهر مهستان</h1>
-
-                    <p>
-                        یک پرونده جنایی جدید در شهر مهستان ثبت شده است.
-                        اطلاعات اولیه پرونده هنوز ناقص است و تحقیقات رسمی
-                        از این لحظه آغاز می‌شود.
-                    </p>
-
-                    <div class="mehestan-case-grid">
-
-                        <div class="mehestan-case-item">
-                            <span>🕘</span>
-                            <strong>زمان حادثه</strong>
-                            <small>23:40</small>
-                        </div>
-
-                        <div class="mehestan-case-item">
-                            <span>📍</span>
-                            <strong>محل اولیه</strong>
-                            <small>در حال شناسایی</small>
-                        </div>
-
-                        <div class="mehestan-case-item">
-                            <span>👤</span>
-                            <strong>وضعیت قربانی</strong>
-                            <small>تأیید شده</small>
-                        </div>
-
-                    </div>
-
-                    <div class="mehestan-objective">
-
-                        <div class="mehestan-objective-title">
-                            🎯 مأموریت شما
-                        </div>
-
-                        <p>
-                            محیط شهر را بررسی کنید، سرنخ‌ها را پیدا کنید،
-                            ارتباط میان افراد و مکان‌ها را کشف کنید و
-                            حقیقت پرونده را به دست آورید.
-                        </p>
-
-                    </div>
-
-                    <button
-                        id="mehestanEnterCity"
-                        class="mehestan-primary-button"
-                        type="button"
-                    >
-                        🗺️ ورود به شهر مهستان
-                    </button>
-
-                </div>
-
-            </div>
-        `;
-
-        show($("#gameModal"));
-
-        $("#mehestanEnterCity")?.addEventListener(
-            "click",
-            () => this.enterCity()
-        );
-    },
-
-    enterCity() {
-
-        const content = $("#gameContent");
-
-        if (!content) {
-            toast("محیط مهستان پیدا نشد.");
-            return;
-        }
-
-        const locations = [
-            { id: "hospital-pahlavi", name: "بیمارستان کوچه پهلوی", category: "hospital", icon: "🟢", x: 28, y: 31 },
-            { id: "hospital-golrokh", name: "بیمارستان کوچه گل‌رخ", category: "hospital", icon: "🟢", x: 63, y: 24 },
-            { id: "hospital-central", name: "بیمارستان مرکزی مهستان", category: "hospital", icon: "🟢", x: 51, y: 68 },
-
-            { id: "gold-rose", name: "طلافروشی رز", category: "gold", icon: "🔴", x: 72, y: 42 },
-            { id: "gold-nasr", name: "طلافروشی نصر", category: "gold", icon: "🔴", x: 35, y: 72 },
-            { id: "gold-shahr", name: "طلافروشی شهر", category: "gold", icon: "🔴", x: 81, y: 70 },
-
-            { id: "mobile-pahlavi", name: "مرکز موبایل پهلوی", category: "mobile", icon: "🟡", x: 44, y: 36 },
-            { id: "mobile-kourosh", name: "فروشگاه موبایل کوروش", category: "mobile", icon: "🟡", x: 67, y: 61 },
-
-            { id: "police-central", name: "کلانتری مرکزی مهستان", category: "police", icon: "🔵", x: 24, y: 55 },
-            { id: "police-vali", name: "کلانتری ولیعصر", category: "police", icon: "🔵", x: 76, y: 27 },
-
-            { id: "hotel-mahestan", name: "هتل بزرگ مهستان", category: "hotel", icon: "🟣", x: 54, y: 17 },
-            { id: "hotel-pars", name: "هتل پارس", category: "hotel", icon: "🟣", x: 86, y: 51 },
-
-            { id: "restaurant-shahr", name: "رستوران شهر", category: "restaurant", icon: "🟠", x: 39, y: 48 },
-            { id: "restaurant-night", name: "رستوران شبانه", category: "restaurant", icon: "🟠", x: 61, y: 78 },
-
-            { id: "bank-markazi", name: "بانک مرکزی مهستان", category: "bank", icon: "🟤", x: 18, y: 22 },
-            { id: "bank-kourosh", name: "بانک کوروش", category: "bank", icon: "🟤", x: 68, y: 83 },
-
-            { id: "pharmacy-pahlavi", name: "داروخانه پهلوی", category: "pharmacy", icon: "⚪", x: 31, y: 60 },
-            { id: "pharmacy-vali", name: "داروخانه ولیعصر", category: "pharmacy", icon: "⚪", x: 89, y: 31 },
-
-            { id: "store-central", name: "فروشگاه مرکزی", category: "store", icon: "🔷", x: 47, y: 57 },
-            { id: "telecom-iran", name: "مرکز مخابرات مهستان", category: "telecom", icon: "🩷", x: 14, y: 77 },
-
-            { id: "station", name: "ایستگاه قطار مهستان", category: "station", icon: "🚉", x: 82, y: 87 },
-            { id: "gas", name: "پمپ بنزین کوروش", category: "gas", icon: "⛽", x: 10, y: 43 },
-            { id: "factory", name: "کارخانه متروکه", category: "factory", icon: "🏭", x: 91, y: 78 },
-            { id: "park", name: "پارک قدیمی", category: "park", icon: "🌳", x: 57, y: 51 },
-            { id: "newspaper", name: "روزنامه مهستان", category: "newspaper", icon: "📰", x: 27, y: 86 },
-            { id: "cityhall", name: "شهرداری مهستان", category: "cityhall", icon: "🏛️", x: 50, y: 88 }
-        ];
-
-        const categories = [
-            ["all", "همه", "📍"],
-            ["hospital", "بیمارستان", "🟢"],
-            ["gold", "طلافروشی", "🔴"],
-            ["mobile", "موبایل", "🟡"],
-            ["police", "کلانتری", "🔵"],
-            ["hotel", "هتل", "🟣"],
-            ["restaurant", "رستوران", "🟠"],
-            ["bank", "بانک", "🟤"],
-            ["pharmacy", "داروخانه", "⚪"],
-            ["store", "فروشگاه", "🔷"],
-            ["telecom", "مخابرات", "🩷"]
-        ];
-
-        const renderMarkers = (list = locations) => {
-            const layer = $("#mehestanMapMarkers");
-            if (!layer) return;
-
-            layer.innerHTML = list.map(location => `
-                <button
-                    class="mehestan-map-marker"
-                    data-location-id="${location.id}"
-                    style="left:${location.x}%;top:${location.y}%"
-                    title="${location.name}"
-                    type="button"
-                >
-                    <span>${location.icon}</span>
-                    <small>${location.name}</small>
-                </button>
-            `).join("");
-
-            $$(".mehestan-map-marker").forEach(marker => {
-                marker.addEventListener("click", () => {
-                    const location = locations.find(
-                        item => item.id === marker.dataset.locationId
-                    );
-
-                    if (location) {
-                        this.openLocation(location);
-                    }
-                });
-            });
-        };
-
-        content.innerHTML = `
-            <div class="mehestan-city">
-
-                <div class="mehestan-city-topbar">
-
-                    <div class="mehestan-city-title">
-                        <span>🗺️</span>
-                        <div>
-                            <strong>شهر مهستان</strong>
-                            <small>جمعیت تقریبی: ۳۰۰٬۰۰۰ نفر</small>
-                        </div>
-                    </div>
-
-                    <div class="mehestan-city-search">
-                        <span>🔎</span>
-                        <input
-                            id="mehestanLocationSearch"
-                            type="search"
-                            placeholder="جست‌وجوی مکان، خیابان یا نام..."
-                            autocomplete="off"
-                        />
-                    </div>
-
-                    <div class="mehestan-city-clock">
-                        <span>🌙</span>
-                        <strong id="mehestanGameClock">23:40</strong>
-                    </div>
-
-                </div>
-
-                <div class="mehestan-city-layout">
-
-                    <aside class="mehestan-map-sidebar">
-
-                        <div class="mehestan-sidebar-title">
-                            📍 مکان‌های شهر
-                        </div>
-
-                        <div id="mehestanCategories" class="mehestan-categories">
-                            ${categories.map(([id, name, icon]) => `
-                                <button
-                                    class="mehestan-category-button ${id === "all" ? "active" : ""}"
-                                    data-category="${id}"
-                                    type="button"
-                                >
-                                    <span>${icon}</span>
-                                    ${name}
-                                </button>
-                            `).join("")}
-                        </div>
-
-                        <div class="mehestan-map-results-title">
-                            نتایج جست‌وجو
-                        </div>
-
-                        <div id="mehestanLocationResults"
-                             class="mehestan-location-results">
-                        </div>
-
-                    </aside>
-
-                    <main class="mehestan-map-area">
-
-                        <div id="mehestanMap"
-                             class="mehestan-map"
-                             tabindex="0">
-
-                            <div class="mehestan-map-grid"></div>
-
-                            <div class="mehestan-map-road road-1"></div>
-                            <div class="mehestan-map-road road-2"></div>
-                            <div class="mehestan-map-road road-3"></div>
-                            <div class="mehestan-map-road road-4"></div>
-
-                            <div class="mehestan-map-district district-a">
-                                مرکز شهر
-                            </div>
-
-                            <div class="mehestan-map-district district-b">
-                                منطقه پهلوی
-                            </div>
-
-                            <div class="mehestan-map-district district-c">
-                                منطقه ولیعصر
-                            </div>
-
-                            <div id="mehestanMapMarkers"></div>
-
-                            <div class="mehestan-map-controls">
-                                <button id="mehestanZoomIn" type="button">＋</button>
-                                <button id="mehestanZoomOut" type="button">−</button>
-                                <button id="mehestanResetMap" type="button">⌖</button>
-                            </div>
-
-                            <div class="mehestan-map-info">
-                                🕵️ حالت تحقیقات فعال
-                            </div>
-
-                        </div>
-
-                    </main>
-
-                </div>
-
-                <div class="mehestan-floating-chat">
-                    💬
-                </div>
-
-            </div>
-        `;
-
-        let activeCategory = "all";
-        let zoom = 1;
-
-        const renderResults = (list) => {
-            const results = $("#mehestanLocationResults");
-
-            if (!results) return;
-
-            results.innerHTML = list.length
-                ? list.map(location => `
-                    <button
-                        class="mehestan-location-result"
-                        data-location-id="${location.id}"
-                        type="button"
-                    >
-                        <span>${location.icon}</span>
-                        <span>
-                            <strong>${location.name}</strong>
-                            <small>مهستان · قابل بررسی</small>
-                        </span>
-                    </button>
-                `).join("")
-                : `<div class="mehestan-no-results">مکانی پیدا نشد.</div>`;
-
-            $$(".mehestan-location-result").forEach(button => {
-                button.addEventListener("click", () => {
-                    const location = locations.find(
-                        item => item.id === button.dataset.locationId
-                    );
-
-                    if (location) {
-                        this.openLocation(location);
-                    }
-                });
-            });
-        };
-
-        const filterLocations = () => {
-            const query = ($("#mehestanLocationSearch")?.value || "")
-                .trim()
-                .toLowerCase();
-
-            const filtered = locations.filter(location => {
-                const categoryMatch =
-                    activeCategory === "all" ||
-                    location.category === activeCategory;
-
-                const textMatch =
-                    !query ||
-                    location.name.toLowerCase().includes(query);
-
-                return categoryMatch && textMatch;
-            });
-
-            renderMarkers(filtered);
-            renderResults(filtered);
-        };
-
-        $$(".mehestan-category-button").forEach(button => {
-            button.addEventListener("click", () => {
-                $$(".mehestan-category-button")
-                    .forEach(item => item.classList.remove("active"));
-
-                button.classList.add("active");
-                activeCategory = button.dataset.category;
-                filterLocations();
-            });
-        });
-
-        $("#mehestanLocationSearch")?.addEventListener(
-            "input",
-            filterLocations
-        );
-
-        $("#mehestanZoomIn")?.addEventListener("click", () => {
-            zoom = Math.min(zoom + 0.15, 2);
-            $("#mehestanMapMarkers").style.transform =
-                `scale(${zoom})`;
-        });
-
-        $("#mehestanZoomOut")?.addEventListener("click", () => {
-            zoom = Math.max(zoom - 0.15, 1);
-            $("#mehestanMapMarkers").style.transform =
-                `scale(${zoom})`;
-        });
-
-        $("#mehestanResetMap")?.addEventListener("click", () => {
-            zoom = 1;
-            $("#mehestanMapMarkers").style.transform = "scale(1)";
-        });
-
-        renderMarkers(locations);
-        renderResults(locations);
-
-        toast("نقشه شهر مهستان آماده شد.");
-    },
-
-    openLocation(location) {
-        toast(`در حال ورود به ${location.name}...`);
-
-        setTimeout(() => {
-            toast(`📍 ${location.name} آماده بررسی است.`);
-        }, 700);
-    }
-
-};
 
 function closeGame() {
 
@@ -3539,6 +3136,748 @@ function closeGame() {
     function closeAdminPanel() {
 
         hide($("#adminModal"));
+    }
+
+
+    async function adminApiFetch(path, options = {}) {
+        const headers = {
+            ...(options.headers || {})
+        };
+
+        if (state.adminToken) {
+            headers["X-Admin-Token"] =
+                state.adminToken;
+        }
+
+        return fetch(
+            `${CONFIG.API_BASE}${path}`,
+            {
+                ...options,
+                headers
+            }
+        );
+    }
+
+
+    async function renderSpyWordsAdmin(content) {
+        content.innerHTML = `
+            <div class="admin-spy-words">
+                <div class="admin-spy-words-head">
+                    <div>
+                        <h3>🕵️ بانک کلمات Spy</h3>
+                        <p>مدیریت کلمات و Aliasهای بازی</p>
+                    </div>
+
+                    <div class="admin-spy-head-actions">
+                        <button
+                            class="admin-spy-add"
+                            id="spyWordsAdd"
+                            type="button"
+                        >
+                            ➕ افزودن کلمه
+                        </button>
+
+                        <button
+                            class="admin-spy-refresh"
+                            id="spyWordsRefresh"
+                            type="button"
+                        >
+                            🔄 تازه‌سازی
+                        </button>
+                    </div>
+                </div>
+
+                <div class="admin-spy-stats">
+                    <div class="admin-stat">
+                        <span>📚</span>
+                        <strong id="spyWordsTotal">0</strong>
+                        <small>کل کلمات</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>🟢</span>
+                        <strong id="spyWordsEnabled">0</strong>
+                        <small>فعال</small>
+                    </div>
+
+                    <div class="admin-stat">
+                        <span>⚪</span>
+                        <strong id="spyWordsDisabled">0</strong>
+                        <small>غیرفعال</small>
+                    </div>
+                </div>
+
+                <div class="admin-spy-search">
+                    <input
+                        id="spyWordsSearch"
+                        type="search"
+                        placeholder="🔍 جستجوی کلمه یا Alias..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div
+                    id="spyWordAddForm"
+                    class="admin-spy-add-form"
+                    hidden
+                >
+                    <div class="admin-spy-form-head">
+                        <strong>➕ افزودن کلمه جدید</strong>
+                        <button
+                            type="button"
+                            id="spyWordAddClose"
+                            class="admin-spy-form-close"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <label class="admin-spy-field">
+                        <span>کلمه اصلی</span>
+                        <input
+                            id="spyWordInput"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="مثلاً: بیمارستان"
+                        >
+                    </label>
+
+                    <label class="admin-spy-field">
+                        <span>Aliasها</span>
+                        <textarea
+                            id="spyWordAliases"
+                            rows="3"
+                            placeholder="مثلاً: درمانگاه، شفاخانه، بیمارستانی"
+                        ></textarea>
+                        <small>
+                            Aliasها را با ویرگول جدا کنید.
+                        </small>
+                    </label>
+
+                    <div class="admin-spy-form-actions">
+                        <button
+                            type="button"
+                            id="spyWordAddCancel"
+                            class="admin-spy-cancel"
+                        >
+                            انصراف
+                        </button>
+
+                        <button
+                            type="button"
+                            id="spyWordAddSubmit"
+                            class="admin-spy-submit"
+                        >
+                            💾 ثبت کلمه
+                        </button>
+                    </div>
+                </div>
+
+                <div id="spyWordsList">
+                    <div class="empty-activity">
+                        ⏳ در حال دریافت بانک کلمات...
+                    </div>
+                </div>
+            </div>
+        `;
+
+        setupSpyWordAddForm(content);
+
+        const refreshButton =
+            $("#spyWordsRefresh");
+
+        if (refreshButton) {
+            refreshButton.addEventListener(
+                "click",
+                () => renderSpyWordsAdmin(content)
+            );
+        }
+
+        try {
+            const words =
+                await loadSpyWords();
+
+            window.__spyWordsCache = words;
+
+            renderSpyWordsList(words);
+
+            const list =
+                $("#spyWordsList");
+
+            if (
+                list &&
+                !list.dataset.actionsReady
+            ) {
+                setupSpyWordActions(list);
+                list.dataset.actionsReady = "true";
+            }
+
+            const search =
+                $("#spyWordsSearch");
+
+            if (search) {
+                search.addEventListener(
+                    "input",
+                    () => {
+                        renderSpyWordsList(
+                            words,
+                            search.value
+                        );
+                    }
+                );
+            }
+
+        } catch (error) {
+            console.error(error);
+
+            const list =
+                $("#spyWordsList");
+
+            if (list) {
+                list.innerHTML = `
+                    <div class="empty-activity">
+                        ❌ ${escapeHtml(
+                            error.message ||
+                            "دریافت بانک کلمات ناموفق بود."
+                        )}
+                    </div>
+                `;
+            }
+        }
+    }
+
+
+    function renderSpyWordsList(words, searchText = "") {
+        const query =
+            String(searchText || "")
+                .trim()
+                .toLowerCase();
+
+        const filtered =
+            words.filter((item) => {
+                const word =
+                    String(item.word || "")
+                        .toLowerCase();
+
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases.join(" ").toLowerCase()
+                        : "";
+
+                return !query ||
+                    word.includes(query) ||
+                    aliases.includes(query);
+            });
+
+        const total =
+            words.length;
+
+        const enabled =
+            words.filter(
+                (item) => item.enabled
+            ).length;
+
+        const disabled =
+            total - enabled;
+
+        setText(
+            $("#spyWordsTotal"),
+            total
+        );
+
+        setText(
+            $("#spyWordsEnabled"),
+            enabled
+        );
+
+        setText(
+            $("#spyWordsDisabled"),
+            disabled
+        );
+
+        const list =
+            $("#spyWordsList");
+
+        if (!list) {
+            return;
+        }
+
+        if (!filtered.length) {
+            list.innerHTML = `
+                <div class="admin-spy-empty">
+                    🔎 کلمه‌ای پیدا نشد.
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML =
+            filtered.map((item) => {
+                const aliases =
+                    Array.isArray(item.aliases)
+                        ? item.aliases
+                        : [];
+
+                return `
+                    <div
+                        class="admin-spy-word-card"
+                        data-spy-word-id="${item.id}"
+                    >
+                        <div class="admin-spy-word-main">
+                            <strong class="admin-spy-word-title">
+                                ${escapeHtml(item.word)}
+                            </strong>
+
+                            <span class="${
+                                item.enabled
+                                    ? "spy-word-enabled"
+                                    : "spy-word-disabled"
+                            }">
+                                ${
+                                    item.enabled
+                                        ? "🟢 فعال"
+                                        : "⚪ غیرفعال"
+                                }
+                            </span>
+                        </div>
+
+                        <div class="admin-spy-aliases">
+                            ${
+                                aliases.length
+                                    ? aliases.map(
+                                        (alias) =>
+                                            `<span class="admin-spy-alias">${escapeHtml(alias)}</span>`
+                                    ).join("")
+                                    : `<small>بدون Alias</small>`
+                            }
+                        </div>
+
+                        <div class="admin-spy-word-actions">
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-edit"
+                                data-spy-action="edit"
+                                data-spy-id="${item.id}"
+                            >
+                                ✏️ ویرایش
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-toggle"
+                                data-spy-action="toggle"
+                                data-spy-id="${item.id}"
+                            >
+                                ${
+                                    item.enabled
+                                        ? "⚪ غیرفعال"
+                                        : "🟢 فعال"
+                                }
+                            </button>
+
+                            <button
+                                type="button"
+                                class="admin-spy-action admin-spy-delete"
+                                data-spy-action="delete"
+                                data-spy-id="${item.id}"
+                            >
+                                🗑️ حذف
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+    }
+
+
+    async function createSpyWord(word, aliases = []) {
+        const response = await adminApiFetch(
+            "/api/game/admin/spy-words",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    word: String(word || "").trim(),
+                    aliases: Array.isArray(aliases)
+                        ? aliases
+                        : []
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "افزودن کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function updateSpyWord(
+        wordId,
+        word,
+        aliases = [],
+        enabled = true
+    ) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    word: String(word || "").trim(),
+                    aliases: Array.isArray(aliases)
+                        ? aliases
+                        : [],
+                    enabled: Boolean(enabled)
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "ویرایش کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function toggleSpyWord(wordId) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}/toggle`,
+            {
+                method: "PATCH"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "تغییر وضعیت کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+    async function deleteSpyWord(wordId) {
+        const response = await adminApiFetch(
+            `/api/game/admin/spy-words/${wordId}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "حذف کلمه انجام نشد."
+            );
+        }
+
+        return data;
+    }
+
+
+    function setupSpyWordActions(list) {
+        if (!list) {
+            return;
+        }
+
+        list.addEventListener("click", async (event) => {
+            const button =
+                event.target.closest(
+                    "[data-spy-action]"
+                );
+
+            if (!button) {
+                return;
+            }
+
+            const action =
+                button.dataset.spyAction;
+
+            const wordId =
+                Number(button.dataset.spyId);
+
+            if (!wordId) {
+                return;
+            }
+
+            const words =
+                window.__spyWordsCache || [];
+
+            const item =
+                words.find(
+                    (word) =>
+                        Number(word.id) === wordId
+                );
+
+            if (!item) {
+                toast("کلمه پیدا نشد.");
+                return;
+            }
+
+            try {
+                button.disabled = true;
+
+                if (action === "toggle") {
+                    await toggleSpyWord(wordId);
+
+                    toast(
+                        item.enabled
+                            ? "کلمه غیرفعال شد."
+                            : "کلمه فعال شد."
+                    );
+
+                    await refreshSpyWordsAdmin();
+                    return;
+                }
+
+                if (action === "delete") {
+                    const confirmed =
+                        confirm(
+                            `کلمه «${item.word}» حذف شود؟`
+                        );
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    await deleteSpyWord(wordId);
+
+                    toast("کلمه حذف شد.");
+
+                    await refreshSpyWordsAdmin();
+                    return;
+                }
+
+                if (action === "edit") {
+                    const newWord =
+                        prompt(
+                            "کلمه جدید:",
+                            item.word
+                        );
+
+                    if (
+                        newWord === null ||
+                        !newWord.trim()
+                    ) {
+                        return;
+                    }
+
+                    const aliasText =
+                        prompt(
+                            "Aliasها را با ویرگول جدا کنید:",
+                            Array.isArray(item.aliases)
+                                ? item.aliases.join(", ")
+                                : ""
+                        );
+
+                    if (aliasText === null) {
+                        return;
+                    }
+
+                    const aliases =
+                        aliasText
+                            .split(",")
+                            .map(
+                                (alias) =>
+                                    alias.trim()
+                            )
+                            .filter(Boolean);
+
+                    await updateSpyWord(
+                        wordId,
+                        newWord.trim(),
+                        aliases,
+                        Boolean(item.enabled)
+                    );
+
+                    toast("کلمه ویرایش شد.");
+
+                    await refreshSpyWordsAdmin();
+                }
+            } catch (error) {
+                console.error(
+                    "Spy word action error:",
+                    error
+                );
+
+                toast(
+                    error.message ||
+                    "عملیات انجام نشد."
+                );
+            } finally {
+                button.disabled = false;
+            }
+        });
+    }
+
+    async function refreshSpyWordsAdmin() {
+        const content =
+            $("#adminContent");
+
+        if (!content) {
+            return;
+        }
+
+        await renderSpyWordsAdmin(content);
+    }
+
+
+    function setupSpyWordAddForm(content) {
+        const form = $("#spyWordAddForm");
+        const openButton = $("#spyWordsAdd");
+        const closeButton = $("#spyWordAddClose");
+        const cancelButton = $("#spyWordAddCancel");
+        const submitButton = $("#spyWordAddSubmit");
+        const wordInput = $("#spyWordInput");
+        const aliasesInput = $("#spyWordAliases");
+
+        if (
+            !form ||
+            !openButton ||
+            !submitButton ||
+            !wordInput ||
+            !aliasesInput
+        ) {
+            return;
+        }
+
+        const closeForm = () => {
+            form.hidden = true;
+            wordInput.value = "";
+            aliasesInput.value = "";
+        };
+
+        openButton.addEventListener("click", () => {
+            form.hidden = false;
+            wordInput.focus();
+        });
+
+        if (closeButton) {
+            closeButton.addEventListener(
+                "click",
+                closeForm
+            );
+        }
+
+        if (cancelButton) {
+            cancelButton.addEventListener(
+                "click",
+                closeForm
+            );
+        }
+
+        submitButton.addEventListener(
+            "click",
+            async () => {
+                const word =
+                    wordInput.value.trim();
+
+                if (!word) {
+                    toast("کلمه اصلی را وارد کنید.");
+                    wordInput.focus();
+                    return;
+                }
+
+                const aliases =
+                    aliasesInput.value
+                        .split(",")
+                        .map(
+                            (alias) =>
+                                alias.trim()
+                        )
+                        .filter(Boolean);
+
+                try {
+                    submitButton.disabled = true;
+
+                    await createSpyWord(
+                        word,
+                        aliases
+                    );
+
+                    toast(
+                        "✅ کلمه با موفقیت اضافه شد."
+                    );
+
+                    closeForm();
+
+                    await refreshSpyWordsAdmin();
+                } catch (error) {
+                    console.error(
+                        "Create spy word error:",
+                        error
+                    );
+
+                    toast(
+                        error.message ||
+                        "افزودن کلمه انجام نشد."
+                    );
+                } finally {
+                    submitButton.disabled = false;
+                }
+            }
+        );
+
+        if (content) {
+            content.addEventListener(
+                "keydown",
+                (event) => {
+                    if (
+                        event.key === "Escape" &&
+                        !form.hidden
+                    ) {
+                        closeForm();
+                    }
+                }
+            );
+        }
+    }
+
+    async function loadSpyWords() {
+        const response =
+            await adminApiFetch(
+                "/api/game/admin/spy-words"
+            );
+
+        if (!response.ok) {
+            let data = {};
+
+            try {
+                data = await response.json();
+            } catch (_) {}
+
+            throw new Error(
+                data.error ||
+                "دریافت بانک کلمات انجام نشد."
+            );
+        }
+
+        const data =
+            await response.json();
+
+        return Array.isArray(data.words)
+            ? data.words
+            : [];
     }
 
 
@@ -3628,6 +3967,11 @@ function closeGame() {
         if (tab === "dashboard") {
 
             await loadAdminDashboard();
+            return;
+        }
+
+        if (tab === "spy-words") {
+            await renderSpyWordsAdmin(content);
             return;
         }
 
@@ -3941,21 +4285,30 @@ function closeGame() {
 
 
         /* Games */
-        $$(".play-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                const game = button.dataset.game;
 
-                if (game === "spy") {
-                    SpyGameUI.open();
-                } else if (game === "mehestan") {
-                    MehestanGameUI.open();
-                } else if (typeof openGame === "function") {
-                    openGame(game);
-                } else {
-                    toast("این بازی هنوز آماده نشده است.");
-                }
+        $$(".play-button")
+            .forEach((button) => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        const game =
+                            button.dataset.game;
+
+                        if (game === "spy") {
+
+                            SpyGameUI.open();
+
+                        } else {
+
+                            openGame(
+                                game
+                            );
+                        }
+                    }
+                );
             });
-        });
 
 
         $("#closeGame")
