@@ -2,3 +2,7 @@ backend/database.db
 backend/ngrok.zip
 backend/__pycache__/
 backend/main.py.old
+
+# Python cache
+__pycache__/
+*.pyc

@@ -3248,3 +3248,198 @@ input:focus-visible {
         grid-template-columns: repeat(2,1fr);
     }
 }
+
+/* =====================================================
+   MEHESTAN — OPENING CASE UI
+   ===================================================== */
+
+.mehestan-shell {
+    width: min(100%, 920px);
+    min-height: 620px;
+    margin: 0 auto;
+    padding: 28px;
+    box-sizing: border-box;
+    color: #f5f1ff;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(126, 76, 180, .22), transparent 42%),
+        linear-gradient(145deg, #0d0b14, #171220 55%, #0b0910);
+    border: 1px solid rgba(190, 140, 255, .18);
+    border-radius: 24px;
+    box-shadow:
+        0 30px 90px rgba(0, 0, 0, .55),
+        inset 0 1px 0 rgba(255, 255, 255, .04);
+    overflow: hidden;
+}
+
+.mehestan-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.mehestan-header-icon {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 17px;
+    background: rgba(135, 78, 190, .16);
+    border: 1px solid rgba(190, 140, 255, .2);
+    font-size: 29px;
+}
+
+.mehestan-title {
+    font-size: clamp(19px, 3vw, 28px);
+    font-weight: 800;
+    letter-spacing: -.4px;
+}
+
+.mehestan-subtitle {
+    margin-top: 5px;
+    color: #a99db8;
+    font-size: 13px;
+}
+
+.mehestan-intro {
+    max-width: 760px;
+    margin: 42px auto 0;
+    text-align: center;
+}
+
+.mehestan-case-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(155, 91, 216, .12);
+    border: 1px solid rgba(190, 140, 255, .2);
+    color: #c9a9ef;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mehestan-intro h1 {
+    margin: 18px 0 12px;
+    font-size: clamp(28px, 5vw, 46px);
+    line-height: 1.15;
+    letter-spacing: -.8px;
+}
+
+.mehestan-intro > p {
+    max-width: 650px;
+    margin: 0 auto;
+    color: #b7adbf;
+    font-size: 14px;
+    line-height: 2;
+}
+
+.mehestan-case-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.mehestan-case-item {
+    padding: 18px 12px;
+    background: rgba(255, 255, 255, .035);
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 16px;
+}
+
+.mehestan-case-item span {
+    display: block;
+    font-size: 23px;
+    margin-bottom: 9px;
+}
+
+.mehestan-case-item strong,
+.mehestan-case-item small {
+    display: block;
+}
+
+.mehestan-case-item strong {
+    font-size: 13px;
+}
+
+.mehestan-case-item small {
+    margin-top: 6px;
+    color: #9f94a8;
+    font-size: 12px;
+}
+
+.mehestan-objective {
+    margin-top: 22px;
+    padding: 20px;
+    text-align: right;
+    background: rgba(116, 70, 167, .09);
+    border: 1px solid rgba(190, 140, 255, .13);
+    border-radius: 17px;
+}
+
+.mehestan-objective-title {
+    margin-bottom: 8px;
+    color: #d1b3f5;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.mehestan-objective p {
+    margin: 0;
+    color: #b7adbf;
+    font-size: 13px;
+    line-height: 2;
+}
+
+.mehestan-primary-button {
+    width: min(100%, 360px);
+    min-height: 54px;
+    margin-top: 28px;
+    border: 0;
+    border-radius: 15px;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #7540a5, #9b5bd8);
+    box-shadow: 0 12px 30px rgba(117, 64, 165, .28);
+    font: inherit;
+    font-weight: 800;
+    font-size: 14px;
+    transition: transform .2s ease, filter .2s ease, box-shadow .2s ease;
+}
+
+.mehestan-primary-button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow: 0 16px 36px rgba(117, 64, 165, .38);
+}
+
+.mehestan-primary-button:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 620px) {
+    .mehestan-shell {
+        min-height: 100%;
+        padding: 19px;
+        border-radius: 18px;
+    }
+
+    .mehestan-case-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mehestan-intro {
+        margin-top: 30px;
+    }
+
+    .mehestan-intro h1 {
+        font-size: 29px;
+    }
+
+    .mehestan-objective {
+        text-align: right;
+    }
+}
+

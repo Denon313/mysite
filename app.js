@@ -91,6 +91,11 @@ console.log("GAME_ROOM_APP_JS_LOADED");
             nature3d: {
                 title: "جنگل آرام",
                 emoji: "🌲"
+            },
+
+            mehestan: {
+                title: "مهستان",
+                emoji: "🕵️‍♂️"
             }
         }
     };
@@ -3049,6 +3054,118 @@ function setupSpySocketListeners() {
 setupSpySocketListeners();
 
 
+
+/* =====================================================
+   MEHESTAN GAME UI
+   ===================================================== */
+
+const MehestanGameUI = {
+
+    open() {
+        state.currentGame = {
+            type: "mehestan",
+            gameId: null,
+            data: null
+        };
+
+        const content = $("#gameContent");
+
+        if (!content) {
+            toast("محیط مهستان پیدا نشد.");
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="mehestan-shell">
+
+                <div class="mehestan-header">
+                    <div class="mehestan-header-icon">🕵️‍♂️</div>
+
+                    <div>
+                        <div class="mehestan-title">پرونده مرموز — شهر مهستان</div>
+                        <div class="mehestan-subtitle">
+                            واحد تحقیقات جنایی
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mehestan-intro">
+
+                    <div class="mehestan-case-badge">
+                        پرونده شماره M-001
+                    </div>
+
+                    <h1>پرونده قتل در شهر مهستان</h1>
+
+                    <p>
+                        یک پرونده جنایی جدید در شهر مهستان ثبت شده است.
+                        اطلاعات اولیه پرونده هنوز ناقص است و تحقیقات رسمی
+                        از این لحظه آغاز می‌شود.
+                    </p>
+
+                    <div class="mehestan-case-grid">
+
+                        <div class="mehestan-case-item">
+                            <span>🕘</span>
+                            <strong>زمان حادثه</strong>
+                            <small>23:40</small>
+                        </div>
+
+                        <div class="mehestan-case-item">
+                            <span>📍</span>
+                            <strong>محل اولیه</strong>
+                            <small>در حال شناسایی</small>
+                        </div>
+
+                        <div class="mehestan-case-item">
+                            <span>👤</span>
+                            <strong>وضعیت قربانی</strong>
+                            <small>تأیید شده</small>
+                        </div>
+
+                    </div>
+
+                    <div class="mehestan-objective">
+
+                        <div class="mehestan-objective-title">
+                            🎯 مأموریت شما
+                        </div>
+
+                        <p>
+                            محیط شهر را بررسی کنید، سرنخ‌ها را پیدا کنید،
+                            ارتباط میان افراد و مکان‌ها را کشف کنید و
+                            حقیقت پرونده را به دست آورید.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="mehestanEnterCity"
+                        class="mehestan-primary-button"
+                        type="button"
+                    >
+                        🗺️ ورود به شهر مهستان
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+        show($("#gameModal"));
+
+        $("#mehestanEnterCity")?.addEventListener(
+            "click",
+            () => this.enterCity()
+        );
+    },
+
+    enterCity() {
+        toast("نقشه شهر مهستان در حال آماده‌سازی است...");
+    }
+
+};
+
 function closeGame() {
 
         state.currentGame =
@@ -3521,30 +3638,21 @@ function closeGame() {
 
 
         /* Games */
+        $$(".play-button").forEach((button) => {
+            button.addEventListener("click", () => {
+                const game = button.dataset.game;
 
-        $$(".play-button")
-            .forEach((button) => {
-
-                button.addEventListener(
-                    "click",
-                    () => {
-
-                        const game =
-                            button.dataset.game;
-
-                        if (game === "spy") {
-
-                            SpyGameUI.open();
-
-                        } else {
-
-                            openGame(
-                                game
-                            );
-                        }
-                    }
-                );
+                if (game === "spy") {
+                    SpyGameUI.open();
+                } else if (game === "mehestan") {
+                    MehestanGameUI.open();
+                } else if (typeof openGame === "function") {
+                    openGame(game);
+                } else {
+                    toast("این بازی هنوز آماده نشده است.");
+                }
             });
+        });
 
 
         $("#closeGame")
