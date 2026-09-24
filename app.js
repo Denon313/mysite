@@ -3470,6 +3470,7 @@ const MehestanGameUI = {
 };
 
 function closeGame() {
+        document.body.classList.remove("mehestan-fullscreen-active");
 
         state.currentGame =
             null;
