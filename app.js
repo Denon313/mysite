@@ -1186,7 +1186,7 @@ console.log("GAME_ROOM_APP_JS_LOADED");
 
 
         socket.on(
-            "game_join_error",
+            "game_error",
             (data) => {
 
                 toast(
@@ -1293,6 +1293,25 @@ console.log("GAME_ROOM_APP_JS_LOADED");
 
         
 
+
+        socket.on("game_state", (data) => {
+            if (!data) {
+                return;
+            }
+
+            const players =
+                Array.isArray(data.players)
+                    ? data.players
+                    : data.players?.players || [];
+
+            players.forEach(mergePlayer);
+
+            if (data.server_time) {
+                state.serverTime = data.server_time;
+            }
+
+            renderMembers();
+        });
 
         socket.on("game_state_update", (data) => {
             updateCurrentGame(data);
