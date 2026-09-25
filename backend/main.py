@@ -4,6 +4,8 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import uuid
+import os
+import secrets
 
 app = Flask(__name__)
 
@@ -68,6 +70,10 @@ USER_SIDS = {}
 
 # وضعیت کاربران
 USER_STATUS = {}
+
+# احراز هویت مدیر
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Mahdi1646")
+ADMIN_SESSIONS = set()
 
 # چت تیم
 CHAT_MESSAGES = []
@@ -226,10 +232,14 @@ def login():
         data.get("username", "")
     ).strip().lower()
 
+    password = str(
+        data.get("password", "")
+    )
+
     if not username:
         return jsonify({
             "success": False,
-            "message": "نام کاربری وارد نشده است.",
+            "error": "نام کاربری وارد نشده است.",
         }), 400
 
     player = get_player(username)
@@ -237,24 +247,37 @@ def login():
     if not player:
         return jsonify({
             "success": False,
-            "message": "این کاربر در اتاق تعریف نشده است.",
+            "error": "این کاربر در اتاق تعریف نشده است.",
         }), 404
 
-    if username in USER_SIDS:
-        return jsonify({
-            "success": False,
-            "message": "این کاربر در حال حاضر وارد بازی است.",
-        }), 409
+    if username == "mehdi":
+        if password != ADMIN_PASSWORD:
+            return jsonify({
+                "success": False,
+                "error": "رمز مدیریت اشتباه است.",
+            }), 401
 
-    if connected_count() >= MAX_PLAYERS:
+        token = secrets.token_urlsafe(48)
+        ADMIN_SESSIONS.add(token)
+
         return jsonify({
-            "success": False,
-            "message": "ظرفیت اتاق تکمیل است.",
-        }), 403
+            "success": True,
+            "username": username,
+            "role": "admin",
+            "admin_token": token,
+            "player": {
+                "username": player["username"],
+                "name": player["name"],
+                "title": player["title"],
+                "admin": player["admin"],
+            },
+            "room": ROOM_ID,
+        })
 
     return jsonify({
         "success": True,
-        "message": "ورود موفق بود.",
+        "username": username,
+        "role": "player",
         "player": {
             "username": player["username"],
             "name": player["name"],
@@ -263,7 +286,6 @@ def login():
         },
         "room": ROOM_ID,
     })
-
 
 # =========================================================
 # SOCKET CONNECTION
@@ -609,7 +631,7 @@ if __name__ == "__main__":
     socketio.run(
         app,
         host="0.0.0.0",
-        port=5000,
+        port=int(os.environ.get("PORT", 5000)),
         debug=False,
         use_reloader=False,
     )
