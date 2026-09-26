@@ -3448,77 +3448,72 @@ input:focus-visible {
    MEHESTAN — CITY MAP
    ========================================================= */
 
+
 .mehestan-city {
     direction: rtl;
+    position: relative;
     width: 100%;
-    height: min(82vh, 900px);
-    min-height: 620px;
-    display: flex;
-    flex-direction: column;
+    height: 100%;
+    min-height: 100dvh;
     overflow: hidden;
     background:
-        radial-gradient(circle at 50% 30%, rgba(102, 68, 145, .18), transparent 45%),
-        #090812;
-    color: #f4efff;
+        radial-gradient(circle at 50% 45%, rgba(100,180,255,.18), transparent 38%),
+        linear-gradient(135deg, #dff4ff 0%, #b9dff2 48%, #d9f0d0 100%);
+    color: #162536;
 }
 
+/* ---------- TOP BAR ---------- */
+
 .mehestan-city-topbar {
-    min-height: 78px;
+    position: relative;
+    z-index: 20;
+    min-height: 72px;
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 12px 18px;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-    background: rgba(12, 10, 22, .94);
+    padding: 10px 18px;
+    background: rgba(255,255,255,.88);
     backdrop-filter: blur(18px);
-    z-index: 20;
+    border-bottom: 1px solid rgba(30,70,100,.12);
+    box-shadow: 0 8px 30px rgba(20,70,100,.12);
 }
 
 .mehestan-city-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 210px;
+    min-width: 220px;
 }
 
 .mehestan-city-title > span {
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    border-radius: 13px;
-    background: rgba(139, 92, 246, .16);
-    border: 1px solid rgba(167, 139, 250, .24);
-    font-size: 22px;
+    font-size: 30px;
 }
 
 .mehestan-city-title strong {
     display: block;
     font-size: 17px;
+    color: #18334b;
 }
 
 .mehestan-city-title small {
     display: block;
     margin-top: 3px;
-    color: #aaa2bd;
+    color: #668197;
     font-size: 11px;
 }
 
 .mehestan-city-search {
     flex: 1;
-    max-width: 620px;
-    height: 48px;
+    max-width: 600px;
+    height: 44px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 15px;
-    border-radius: 15px;
-    background: rgba(255,255,255,.055);
-    border: 1px solid rgba(255,255,255,.09);
-}
-
-.mehestan-city-search span {
-    font-size: 18px;
+    gap: 9px;
+    padding: 0 14px;
+    background: #fff;
+    border: 1px solid rgba(50,100,130,.15);
+    border-radius: 14px;
+    box-shadow: 0 5px 20px rgba(30,80,110,.08);
 }
 
 .mehestan-city-search input {
@@ -3526,346 +3521,457 @@ input:focus-visible {
     border: 0;
     outline: 0;
     background: transparent;
-    color: white;
+    color: #18334b;
     font-family: inherit;
-    font-size: 14px;
-}
-
-.mehestan-city-search input::placeholder {
-    color: #817b90;
+    font-size: 13px;
 }
 
 .mehestan-city-clock {
     margin-right: auto;
-    min-width: 100px;
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border-radius: 13px;
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(255,255,255,.07);
-}
-
-.mehestan-city-clock strong {
-    font-variant-numeric: tabular-nums;
-}
-
-.mehestan-city-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-}
-
-.mehestan-map-sidebar {
-    width: 250px;
-    flex: 0 0 250px;
-    padding: 16px;
-    overflow-y: auto;
-    background: rgba(13, 11, 24, .92);
-    border-left: 1px solid rgba(255,255,255,.07);
-}
-
-.mehestan-sidebar-title,
-.mehestan-map-results-title {
-    margin-bottom: 12px;
-    font-size: 13px;
-    font-weight: 800;
-    color: #dcd5e9;
-}
-
-.mehestan-map-results-title {
-    margin-top: 22px;
-}
-
-.mehestan-categories {
-    display: grid;
-    gap: 6px;
-}
-
-.mehestan-category-button {
-    width: 100%;
-    min-height: 38px;
-    padding: 7px 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    background: transparent;
-    color: #a8a1b7;
-    font-family: inherit;
-    font-size: 12px;
-    text-align: right;
-    cursor: pointer;
-    transition: .18s ease;
-}
-
-.mehestan-category-button:hover {
-    background: rgba(255,255,255,.045);
-    color: white;
-}
-
-.mehestan-category-button.active {
-    background: rgba(139, 92, 246, .15);
-    border-color: rgba(167, 139, 250, .22);
-    color: #eee8ff;
-}
-
-.mehestan-location-results {
-    display: grid;
-    gap: 7px;
-}
-
-.mehestan-location-result {
-    width: 100%;
-    padding: 9px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid rgba(255,255,255,.055);
-    border-radius: 11px;
-    background: rgba(255,255,255,.025);
-    color: #eee;
-    font-family: inherit;
-    text-align: right;
-    cursor: pointer;
-    transition: .18s ease;
-}
-
-.mehestan-location-result:hover {
-    background: rgba(139, 92, 246, .11);
-    border-color: rgba(167, 139, 250, .22);
-    transform: translateX(-2px);
-}
-
-.mehestan-location-result > span:first-child {
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-    background: rgba(255,255,255,.05);
-}
-
-.mehestan-location-result strong,
-.mehestan-location-result small {
-    display: block;
-}
-
-.mehestan-location-result strong {
-    font-size: 11px;
-}
-
-.mehestan-location-result small {
-    margin-top: 2px;
-    color: #777082;
-    font-size: 9px;
-}
-
-.mehestan-no-results {
-    padding: 20px 8px;
-    color: #777082;
-    font-size: 11px;
+    min-width: 92px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #edf7ff;
+    border: 1px solid #cfe8f7;
     text-align: center;
 }
 
+.mehestan-city-clock strong {
+    color: #17648e;
+    font-size: 15px;
+}
+
+/* ---------- LAYOUT ---------- */
+
+.mehestan-city-layout {
+    display: flex;
+    height: calc(100% - 72px);
+    min-height: 0;
+}
+
+.mehestan-map-sidebar {
+    position: relative;
+    z-index: 15;
+    width: 255px;
+    flex: 0 0 255px;
+    padding: 14px;
+    overflow-y: auto;
+    background: rgba(255,255,255,.91);
+    backdrop-filter: blur(16px);
+    border-left: 1px solid rgba(30,70,100,.1);
+    box-shadow: 8px 0 25px rgba(20,70,100,.08);
+}
+
+.mehestan-sidebar-title {
+    font-weight: 800;
+    color: #24445c;
+    margin-bottom: 12px;
+}
+
+.mehestan-map-results-title {
+    margin: 16px 0 8px;
+    color: #557087;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ---------- MAP ---------- */
+
 .mehestan-map-area {
+    position: relative;
     flex: 1;
     min-width: 0;
     min-height: 0;
-    position: relative;
     overflow: hidden;
-    background: #101421;
+    background: #b9d9e9;
 }
 
 .mehestan-map {
-    position: absolute;
-    inset: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 900px;
+    min-height: 700px;
     overflow: hidden;
-    outline: none;
+    isolation: isolate;
+
     background:
-        radial-gradient(circle at 50% 50%, rgba(89, 117, 146, .18), transparent 38%),
-        linear-gradient(145deg, #18212a 0%, #101821 50%, #0b1119 100%);
-    perspective: 1000px;
+        radial-gradient(
+            ellipse at 50% 48%,
+            rgba(255,255,255,.55) 0%,
+            rgba(255,255,255,0) 42%
+        ),
+        linear-gradient(
+            135deg,
+            #a8d7e9 0%,
+            #d6edc8 47%,
+            #b6dfc5 100%
+        );
 }
+
+/* ---------- WATER ---------- */
+
+.mehestan-map::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    left: -8%;
+    top: 8%;
+    width: 38%;
+    height: 115%;
+    transform: rotate(-8deg);
+    border-radius: 48% 58% 52% 45%;
+    background:
+        repeating-linear-gradient(
+            165deg,
+            rgba(255,255,255,.13) 0 3px,
+            transparent 3px 13px
+        ),
+        linear-gradient(
+            180deg,
+            #73c5e7,
+            #4ca8d1
+        );
+    box-shadow:
+        inset -15px 0 30px rgba(20,100,150,.18),
+        10px 0 35px rgba(20,100,150,.13);
+}
+
+/* secondary canal */
+.mehestan-map::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 3%;
+    bottom: -18%;
+    width: 70%;
+    height: 27%;
+    transform: rotate(-7deg);
+    border-radius: 50%;
+    background:
+        repeating-linear-gradient(
+            165deg,
+            rgba(255,255,255,.12) 0 2px,
+            transparent 2px 11px
+        ),
+        linear-gradient(
+            180deg,
+            #72c7e8,
+            #55afd5
+        );
+    opacity: .95;
+}
+
+/* ---------- CITY LAND ---------- */
 
 .mehestan-map-grid {
     position: absolute;
-    inset: -10%;
-    opacity: .18;
-    background-image:
-        linear-gradient(rgba(130, 160, 185, .16) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(130, 160, 185, .16) 1px, transparent 1px);
-    background-size: 48px 48px;
-    transform: rotateX(55deg) scale(1.5);
-    transform-origin: center;
+    z-index: 1;
+    inset: 8% 5%;
+    border-radius: 34%;
+    opacity: .55;
+    background:
+        linear-gradient(
+            35deg,
+            transparent 47%,
+            rgba(255,255,255,.35) 48%,
+            transparent 50%
+        ),
+        linear-gradient(
+            -25deg,
+            transparent 47%,
+            rgba(255,255,255,.25) 48%,
+            transparent 50%
+        );
+    background-size: 95px 75px;
+    transform: perspective(1100px) rotateX(52deg) scale(1.2);
+    transform-origin: center bottom;
 }
+
+/* ---------- ROADS ---------- */
 
 .mehestan-map-road {
     position: absolute;
-    background: rgba(190, 198, 207, .12);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.025);
+    z-index: 3;
+    background:
+        linear-gradient(
+            90deg,
+            #8e9ba2,
+            #c4cdd0 45%,
+            #8e9ba2
+        );
+    border-radius: 999px;
+    box-shadow:
+        0 2px 5px rgba(40,60,70,.22),
+        inset 0 1px rgba(255,255,255,.5);
+    opacity: .92;
 }
 
 .mehestan-map-road::after {
     content: "";
     position: absolute;
-    inset: 45%;
-    background: rgba(255, 220, 130, .25);
+    inset: 45% 0 auto;
+    height: 3px;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,.8) 0 22px,
+        transparent 22px 42px
+    );
 }
 
-.road-1 {
-    width: 150%;
-    height: 17px;
-    top: 39%;
-    left: -25%;
-    transform: rotate(-11deg);
-}
-
-.road-2 {
-    width: 135%;
-    height: 13px;
-    top: 65%;
+/* main roads */
+.mehestan-map-road.road-1 {
+    width: 130%;
+    height: 38px;
     left: -15%;
-    transform: rotate(18deg);
+    top: 48%;
+    transform: rotate(-7deg);
 }
 
-.road-3 {
-    width: 15px;
-    height: 130%;
-    left: 52%;
-    top: -15%;
-    transform: rotate(12deg);
+.mehestan-map-road.road-2 {
+    width: 120%;
+    height: 34px;
+    left: -8%;
+    top: 68%;
+    transform: rotate(11deg);
 }
 
-.road-4 {
-    width: 11px;
-    height: 125%;
-    left: 28%;
-    top: -10%;
-    transform: rotate(-27deg);
+.mehestan-map-road.road-3 {
+    width: 105%;
+    height: 30px;
+    left: -2%;
+    top: 31%;
+    transform: rotate(24deg);
 }
+
+.mehestan-map-road.road-4 {
+    width: 95%;
+    height: 28px;
+    left: 10%;
+    top: 18%;
+    transform: rotate(-18deg);
+}
+
+/* extra streets */
+.mehestan-map-road.road-5 {
+    width: 75%;
+    height: 17px;
+    left: 10%;
+    top: 56%;
+    transform: rotate(58deg);
+}
+
+.mehestan-map-road.road-6 {
+    width: 70%;
+    height: 16px;
+    left: 20%;
+    top: 36%;
+    transform: rotate(-52deg);
+}
+
+.mehestan-map-road.road-7 {
+    width: 65%;
+    height: 14px;
+    left: 30%;
+    top: 72%;
+    transform: rotate(-35deg);
+}
+
+.mehestan-map-road.road-8 {
+    width: 58%;
+    height: 13px;
+    left: 34%;
+    top: 23%;
+    transform: rotate(42deg);
+}
+
+/* ---------- DISTRICTS ---------- */
 
 .mehestan-map-district {
     position: absolute;
-    padding: 7px 10px;
-    border-radius: 9px;
-    background: rgba(0,0,0,.18);
-    border: 1px solid rgba(255,255,255,.05);
-    color: rgba(220,225,230,.34);
-    font-size: 11px;
-    pointer-events: none;
+    z-index: 4;
+    padding: 8px 15px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.65);
+    border: 1px solid rgba(50,100,120,.12);
+    color: #4a6878;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 5px 15px rgba(30,70,90,.08);
 }
 
-.district-a {
-    left: 44%;
-    top: 47%;
+.mehestan-map-district.district-a {
+    left: 47%;
+    top: 46%;
 }
 
-.district-b {
-    left: 17%;
-    top: 28%;
+.mehestan-map-district.district-b {
+    left: 23%;
+    top: 24%;
 }
 
-.district-c {
-    left: 67%;
-    top: 65%;
+.mehestan-map-district.district-c {
+    right: 18%;
+    top: 35%;
 }
+
+/* ---------- MARKERS ---------- */
 
 #mehestanMapMarkers {
     position: absolute;
+    z-index: 10;
     inset: 0;
-    transform-origin: center;
+    transform-origin: center center;
     transition: transform .25s ease;
 }
 
 .mehestan-map-marker {
     position: absolute;
     transform: translate(-50%, -50%);
-    min-width: 34px;
-    padding: 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    border: 0;
-    background: transparent;
-    color: white;
     cursor: pointer;
-    z-index: 5;
+    user-select: none;
+    transition: transform .18s ease, filter .18s ease;
 }
 
-.mehestan-map-marker span {
-    width: 32px;
-    height: 32px;
+.mehestan-map-marker:hover {
+    transform: translate(-50%, -50%) scale(1.12);
+    filter: brightness(1.08);
+}
+
+.mehestan-map-marker > div {
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: rgba(15, 12, 25, .92);
-    border: 2px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.94);
+    border: 3px solid rgba(255,255,255,.9);
     box-shadow:
-        0 5px 18px rgba(0,0,0,.38),
-        0 0 18px rgba(139,92,246,.12);
-    transition: .2s ease;
-    font-size: 17px;
+        0 5px 14px rgba(20,60,80,.28),
+        0 0 0 2px rgba(40,110,150,.16);
+    font-size: 19px;
 }
 
-.mehestan-map-marker:hover span {
-    transform: translateY(-4px) scale(1.14);
-    border-color: rgba(255,255,255,.5);
-}
-
-.mehestan-map-marker small {
-    max-width: 120px;
-    padding: 3px 6px;
-    border-radius: 5px;
-    background: rgba(7,8,13,.82);
-    color: rgba(245,242,250,.88);
-    font-size: 8px;
+.mehestan-map-marker span {
+    display: block;
+    margin-top: 4px;
+    padding: 3px 7px;
+    max-width: 150px;
+    border-radius: 7px;
+    background: rgba(255,255,255,.9);
+    color: #24445c;
+    font-size: 9px;
+    font-weight: 800;
+    text-align: center;
     white-space: nowrap;
-    pointer-events: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 3px 9px rgba(20,60,80,.14);
 }
+
+/* ---------- MAP CONTROLS ---------- */
 
 .mehestan-map-controls {
     position: absolute;
+    z-index: 30;
     left: 18px;
     bottom: 18px;
-    display: grid;
-    gap: 6px;
-    z-index: 20;
+    display: flex;
+    gap: 7px;
 }
 
 .mehestan-map-controls button {
     width: 42px;
     height: 42px;
-    border: 1px solid rgba(255,255,255,.11);
-    border-radius: 12px;
-    background: rgba(12,10,20,.82);
-    color: white;
-    font-family: inherit;
+    border: 0;
+    border-radius: 13px;
+    background: rgba(255,255,255,.92);
+    color: #27526c;
     font-size: 21px;
+    font-weight: 900;
+    box-shadow: 0 5px 16px rgba(20,60,80,.18);
     cursor: pointer;
-    backdrop-filter: blur(12px);
-}
-
-.mehestan-map-controls button:hover {
-    background: rgba(139,92,246,.25);
 }
 
 .mehestan-map-info {
     position: absolute;
-    left: 18px;
-    top: 18px;
-    padding: 9px 12px;
-    border-radius: 11px;
-    background: rgba(9,8,16,.76);
-    border: 1px solid rgba(255,255,255,.08);
-    color: #bbb2c9;
-    font-size: 10px;
-    backdrop-filter: blur(12px);
+    z-index: 30;
+    right: 18px;
+    bottom: 18px;
+    padding: 9px 13px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.9);
+    color: #31566c;
+    font-size: 11px;
+    font-weight: 800;
+    box-shadow: 0 5px 16px rgba(20,60,80,.14);
+}
+
+/* ---------- MOBILE LANDSCAPE ---------- */
+
+@media (orientation: portrait) and (max-width: 900px) {
+    body.mehestan-fullscreen-active::before {
+        content: "📱 گوشی را افقی کنید";
+        position: fixed;
+        z-index: 999999;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 30px;
+        background: #10202c;
+        color: white;
+        font-size: 24px;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    body.mehestan-fullscreen-active .game-modal {
+        visibility: hidden !important;
+    }
+}
+
+@media (orientation: landscape) and (max-width: 900px) {
+    .mehestan-city-topbar {
+        min-height: 58px;
+        padding: 7px 10px;
+        gap: 8px;
+    }
+
+    .mehestan-city-title {
+        min-width: 150px;
+    }
+
+    .mehestan-city-title > span {
+        font-size: 23px;
+    }
+
+    .mehestan-city-title strong {
+        font-size: 13px;
+    }
+
+    .mehestan-city-title small {
+        font-size: 9px;
+    }
+
+    .mehestan-city-search {
+        height: 36px;
+    }
+
+    .mehestan-city-clock {
+        min-width: 70px;
+        padding: 6px;
+    }
+
+    .mehestan-map-sidebar {
+        width: 190px;
+        flex-basis: 190px;
+        padding: 9px;
+    }
+
+    .mehestan-map {
+        min-width: 700px;
+        min-height: 500px;
+    }
 }
 
 .mehestan-floating-chat {
