@@ -3402,6 +3402,10 @@ const MehestanGameUI = {
                         <span>🌙</span>
                         <strong id="mehestanGameClock">23:40</strong>
                     </div>
+    <button id="mehestanFullscreen" class="mehestan-fullscreen-button" type="button" title="تمام صفحه">
+      ⛶
+      <span>تمام صفحه</span>
+    </button>
 
                 </div>
 
@@ -3523,7 +3527,72 @@ const MehestanGameUI = {
             });
         };
 
-        const filterLocations = () => {
+        
+const mehestanFullscreenButton = $("#mehestanFullscreen");
+
+const updateMehestanFullscreenButton = () => {
+  if (!mehestanFullscreenButton) return;
+
+  const active =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement;
+
+  mehestanFullscreenButton.querySelector("span").textContent =
+    active ? "خروج از تمام صفحه" : "تمام صفحه";
+
+  mehestanFullscreenButton.firstChild.textContent =
+    active ? "✕ " : "⛶ ";
+};
+
+const enterMehestanFullscreen = async () => {
+  const target = document.querySelector(".mehestan-city") || document.documentElement;
+
+  try {
+    if (target.requestFullscreen) {
+      await target.requestFullscreen();
+    } else if (target.webkitRequestFullscreen) {
+      target.webkitRequestFullscreen();
+    } else {
+      document.body.classList.add("mehestan-force-fullscreen");
+    }
+  } catch (error) {
+    document.body.classList.add("mehestan-force-fullscreen");
+  }
+
+  updateMehestanFullscreenButton();
+};
+
+const exitMehestanFullscreen = async () => {
+  try {
+    if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  } catch (error) {}
+
+  document.body.classList.remove("mehestan-force-fullscreen");
+  updateMehestanFullscreenButton();
+};
+
+mehestanFullscreenButton?.addEventListener("click", async () => {
+  const active =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement;
+
+  if (active) {
+    await exitMehestanFullscreen();
+  } else {
+    await enterMehestanFullscreen();
+  }
+});
+
+document.addEventListener("fullscreenchange", updateMehestanFullscreenButton);
+document.addEventListener("webkitfullscreenchange", updateMehestanFullscreenButton);
+
+updateMehestanFullscreenButton();
+
+const filterLocations = () => {
             const query = ($("#mehestanLocationSearch")?.value || "")
                 .trim()
                 .toLowerCase();
