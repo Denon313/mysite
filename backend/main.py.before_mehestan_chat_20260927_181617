@@ -78,10 +78,6 @@ ADMIN_SESSIONS = set()
 # چت تیم
 CHAT_MESSAGES = []
 
-# چت اختصاصی پرونده مهستان
-MEHESTAN_CHAT_MESSAGES = []
-MEHESTAN_CHAT_MAX_MESSAGES = 300
-
 # رویدادهای بازی
 GAME_EVENTS = []
 
@@ -395,111 +391,6 @@ def game_join(data):
     )
 
     broadcast_state()
-
-
-
-# =========================================================
-# MEHESTAN CHAT JOIN
-# =========================================================
-
-@socketio.on("mehestan_chat_join")
-def mehestan_chat_join(data):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip().lower()
-
-    case_id = str(
-        data.get("case_id", "main")
-    ).strip()
-
-    if username not in USER_SIDS:
-        emit("mehestan_chat_error", {
-            "error": "ابتدا وارد Game Room شوید."
-        })
-        return
-
-    if not case_id:
-        case_id = "main"
-
-    room = f"MEHESTAN_CHAT:{case_id}"
-
-    join_room(room)
-
-    messages = [
-        item
-        for item in MEHESTAN_CHAT_MESSAGES
-        if item.get("case_id") == case_id
-    ][-MEHESTAN_CHAT_MAX_MESSAGES:]
-
-    emit("mehestan_chat_history", {
-        "case_id": case_id,
-        "messages": messages,
-    })
-
-
-
-
-# =========================================================
-# MEHESTAN CHAT MESSAGE
-# =========================================================
-
-@socketio.on("mehestan_chat_message")
-def mehestan_chat_message(data):
-    data = data or {}
-
-    username = str(
-        data.get("username", "")
-    ).strip().lower()
-
-    message = str(
-        data.get("message", "")
-    ).strip()
-
-    case_id = str(
-        data.get("case_id", "main")
-    ).strip()
-
-    if username not in USER_SIDS:
-        emit("mehestan_chat_error", {
-            "error": "ابتدا وارد Game Room شوید."
-        })
-        return
-
-    if not message:
-        return
-
-    if len(message) > 1000:
-        message = message[:1000]
-
-    if not case_id:
-        case_id = "main"
-
-    player = PLAYERS[username]
-    room = f"MEHESTAN_CHAT:{case_id}"
-
-    item = {
-        "id": str(uuid.uuid4()),
-        "case_id": case_id,
-        "username": username,
-        "name": player["name"],
-        "title": player["title"],
-        "message": message,
-        "time": iran_time(),
-    }
-
-    MEHESTAN_CHAT_MESSAGES.append(item)
-
-    if len(MEHESTAN_CHAT_MESSAGES) > MEHESTAN_CHAT_MAX_MESSAGES:
-        del MEHESTAN_CHAT_MESSAGES[:-MEHESTAN_CHAT_MAX_MESSAGES]
-
-    socketio.emit(
-        "mehestan_chat_message",
-        item,
-        room=room
-    )
-
 
 
 # =========================================================
