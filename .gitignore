@@ -1,0 +1,7 @@
+backend/main.py
+backend/menu.db
+backend/__pycache__/
+*.pyc
+.env
+node_modules/
+.DS_Store

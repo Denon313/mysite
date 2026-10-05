@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>مدیریت رستوران</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body {
+            background:
+                radial-gradient(
+                    circle at top right,
+                    rgba(201, 154, 82, 0.14),
+                    transparent 35%
+                ),
+                #090909;
+        }
+
+        .admin-page {
+            width: 100%;
+            max-width: 900px;
+            margin: auto;
+            padding: 20px 14px 50px;
+        }
+
+        .admin-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .admin-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(
+                135deg,
+                #d6ad68,
+                #8b6735
+            );
+            color: #17120b;
+            font-weight: 900;
+            font-size: 20px;
+        }
+
+        .admin-title h1 {
+            font-size: 19px;
+            color: #f4eadb;
+        }
+
+        .admin-title p {
+            color: #777;
+            font-size: 10px;
+        }
+
+        .logout-button {
+            border: 1px solid rgba(255,255,255,.08);
+            background: #151515;
+            color: #aaa;
+            border-radius: 12px;
+            padding: 9px 13px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .admin-stat {
+            padding: 18px;
+            background: #151515;
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 18px;
+        }
+
+        .admin-stat span {
+            display: block;
+            color: #777;
+            font-size: 10px;
+            margin-bottom: 5px;
+        }
+
+        .admin-stat strong {
+            color: #e6d1ad;
+            font-size: 23px;
+        }
+
+        .admin-section {
+            margin-bottom: 18px;
+            padding: 18px;
+            background: #131313;
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 20px;
+        }
+
+        .admin-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .admin-section-header h2 {
+            font-size: 15px;
+            color: #eadbc4;
+        }
+
+        .primary-button {
+            border: none;
+            border-radius: 11px;
+            padding: 9px 13px;
+            background: linear-gradient(
+                135deg,
+                #d4aa63,
+                #936b35
+            );
+            color: #17120b;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .category-admin {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 13px;
+            margin-bottom: 8px;
+            background: #191919;
+            border-radius: 13px;
+        }
+
+        .category-admin-name {
+            color: #ddd;
+            font-size: 12px;
+        }
+
+        .category-admin-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .small-button {
+            border: 1px solid rgba(255,255,255,.08);
+            background: #222;
+            color: #aaa;
+            padding: 6px 9px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 9px;
+            cursor: pointer;
+        }
+
+        .small-button.danger {
+            color: #ef7777;
+        }
+
+        .admin-login {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 390px;
+            padding: 28px 22px;
+            background: #141414;
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,.35);
+        }
+
+        .login-logo {
+            width: 55px;
+            height: 55px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 17px;
+            background: linear-gradient(
+                135deg,
+                #d6ad68,
+                #896332
+            );
+            color: #17120b;
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .login-box h1 {
+            text-align: center;
+            font-size: 19px;
+            color: #eee;
+        }
+
+        .login-box p {
+            text-align: center;
+            color: #777;
+            font-size: 10px;
+            margin: 5px 0 22px;
+        }
+
+        .input-group {
+            margin-bottom: 13px;
+        }
+
+        .input-group label {
+            display: block;
+            color: #999;
+            font-size: 10px;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,.08);
+            outline: none;
+            border-radius: 12px;
+            background: #0e0e0e;
+            color: #eee;
+            font-family: inherit;
+        }
+
+        .input-group input:focus {
+            border-color: rgba(201,154,82,.5);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(
+                135deg,
+                #d6ad68,
+                #936b35
+            );
+            color: #17120b;
+            font-family: inherit;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .login-message {
+            text-align: center;
+            color: #e56f6f;
+            font-size: 10px;
+            margin-top: 12px;
+            min-height: 18px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 500px) {
+            .admin-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .admin-section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================
+         LOGIN
+    ========================== -->
+
+    <div
+        id="loginPage"
+        class="admin-login"
+    >
+
+        <div class="login-box">
+
+            <div class="login-logo">
+                R
+            </div>
+
+            <h1>
+                مدیریت رستوران
+            </h1>
+
+            <p>
+                ورود مدیر سیستم
+            </p>
+
+            <div class="input-group">
+
+                <label for="username">
+                    نام کاربری
+                </label>
+
+                <input
+                    id="username"
+                    type="text"
+                    autocomplete="username"
+                    placeholder="نام کاربری"
+                >
+
+            </div>
+
+            <div class="input-group">
+
+                <label for="password">
+                    رمز عبور
+                </label>
+
+                <input
+                    id="password"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="رمز عبور"
+                >
+
+            </div>
+
+            <button
+                id="loginButton"
+                class="login-button"
+            >
+                ورود به پنل
+            </button>
+
+            <div
+                id="loginMessage"
+                class="login-message"
+            ></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         ADMIN PANEL
+    ========================== -->
+
+    <div
+        id="adminPanel"
+        class="admin-page hidden"
+    >
+
+        <header class="admin-header">
+
+            <div class="admin-title">
+
+                <div class="admin-icon">
+                    R
+                </div>
+
+                <div>
+
+                    <h1>
+                        پنل مدیریت
+                    </h1>
+
+                    <p>
+                        مدیریت منوی رستوران
+                    </p>
+
+                </div>
+
+            </div>
+
+            <button
+                id="logoutButton"
+                class="logout-button"
+            >
+                خروج
+            </button>
+
+        </header>
+
+
+        <!-- =========================
+             STATISTICS
+        ========================== -->
+
+        <div class="admin-grid">
+
+            <div class="admin-stat">
+
+                <span>
+                    تعداد دسته‌ها
+                </span>
+
+                <strong id="categoryCount">
+                    0
+                </strong>
+
+            </div>
+
+            <div class="admin-stat">
+
+                <span>
+                    تعداد محصولات
+                </span>
+
+                <strong id="productCount">
+                    0
+                </strong>
+
+            </div>
+
+            <div class="admin-stat">
+
+                <span>
+                    محصولات موجود
+                </span>
+
+                <strong id="availableCount">
+                    0
+                </strong>
+
+            </div>
+
+            <div class="admin-stat">
+
+                <span>
+                    محصولات ناموجود
+                </span>
+
+                <strong id="unavailableCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             CATEGORIES
+        ========================== -->
+
+        <section class="admin-section">
+
+            <div class="admin-section-header">
+
+                <h2>
+                    دسته‌بندی‌ها
+                </h2>
+
+                <button
+                    id="addCategoryButton"
+                    class="primary-button"
+                >
+                    + دسته جدید
+                </button>
+
+            </div>
+
+            <div id="categoryList">
+
+                <div class="menu-message">
+                    در حال دریافت اطلاعات...
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             PRODUCTS
+        ========================== -->
+
+        <section class="admin-section">
+
+            <div class="admin-section-header">
+
+                <h2>
+                    محصولات
+                </h2>
+
+                <button
+                    id="addProductButton"
+                    class="primary-button"
+                >
+                    + محصول جدید
+                </button>
+
+            </div>
+
+            <div id="productList">
+
+                <div class="menu-message">
+                    در حال دریافت اطلاعات...
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <script src="admin.js"></script>
+
+</body>
+</html>
