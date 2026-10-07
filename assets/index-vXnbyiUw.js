@@ -1,9 +1,9 @@
-(function(){const t=document.createElement("link").relList;if(t&&t.supports&&t.supports("modulepreload"))return;for(const n of document.querySelectorAll('link[rel="modulepreload"]'))d(n);new MutationObserver(n=>{for(const s of n)if(s.type==="childList")for(const l of s.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&d(l)}).observe(document,{childList:!0,subtree:!0});function a(n){const s={};return n.integrity&&(s.integrity=n.integrity),n.referrerPolicy&&(s.referrerPolicy=n.referrerPolicy),n.crossOrigin==="use-credentials"?s.credentials="include":n.crossOrigin==="anonymous"?s.credentials="omit":s.credentials="same-origin",s}function d(n){if(n.ep)return;n.ep=!0;const s=a(n);fetch(n.href,s)}})();const E="rayka_menu_products_v2",q="rayka_menu_logs_v2",L=[{id:crypto.randomUUID(),name:"پیتزا پپرونی",category:"فست‌فود",section:"پیتزا",description:"سوسیس پپرونی تند، پنیر پیتزا، فلفل دلمه، قارچ و سس مخصوص رایکا",price:285e3,stock:12,available:!0,image:""},{id:crypto.randomUUID(),name:"چیکن آلفردو",category:"غذای اصلی",section:"پاستا",description:"پاستا، فیله مرغ، سس آلفردو، قارچ و پنیر پارمزان",price:32e4,stock:8,available:!0,image:""},{id:crypto.randomUUID(),name:"کباب مخصوص رایکا",category:"کباب",section:"کباب",description:"کباب مخصوص سرآشپز، برنج ایرانی، گوجه کبابی و کره",price:42e4,stock:5,available:!0,image:""},{id:crypto.randomUUID(),name:"برگر ویژه رایکا",category:"فست‌فود",section:"برگر",description:"گوشت گریل‌شده، پنیر چدار، قارچ، کاهو، گوجه و سس مخصوص",price:31e4,stock:0,available:!1,image:""},{id:crypto.randomUUID(),name:"نوشابه",category:"نوشیدنی",section:"نوشیدنی",description:"نوشیدنی خنک",price:45e3,stock:24,available:!0,image:""},{id:crypto.randomUUID(),name:"آب معدنی",category:"نوشیدنی",section:"نوشیدنی",description:"آب معدنی خنک",price:25e3,stock:30,available:!0,image:""}],U=["همه","غذای اصلی","فست‌فود","کباب","نوشیدنی","پاستا","برگر","پیتزا"];let c=M(),y=C(),g="همه",h=!1;const D=document.querySelector("#app");function M(){try{const e=localStorage.getItem(E);return e?JSON.parse(e):L}catch{return L}}function k(){localStorage.setItem(E,JSON.stringify(c))}function C(){try{return JSON.parse(localStorage.getItem(q)||"[]")}catch{return[]}}function K(){localStorage.setItem(q,JSON.stringify(y))}function v(e,t,a=""){y.unshift({id:crypto.randomUUID(),action:e,productName:t,details:a,time:new Date().toLocaleString("fa-IR")}),y=y.slice(0,300),K()}function x(e){return new Intl.NumberFormat("fa-IR").format(Number(e||0))+" تومان"}function u(e=""){return String(e).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function I(){return`
+(function(){const t=document.createElement("link").relList;if(t&&t.supports&&t.supports("modulepreload"))return;for(const n of document.querySelectorAll('link[rel="modulepreload"]'))d(n);new MutationObserver(n=>{for(const s of n)if(s.type==="childList")for(const l of s.addedNodes)l.tagName==="LINK"&&l.rel==="modulepreload"&&d(l)}).observe(document,{childList:!0,subtree:!0});function a(n){const s={};return n.integrity&&(s.integrity=n.integrity),n.referrerPolicy&&(s.referrerPolicy=n.referrerPolicy),n.crossOrigin==="use-credentials"?s.credentials="include":n.crossOrigin==="anonymous"?s.credentials="omit":s.credentials="same-origin",s}function d(n){if(n.ep)return;n.ep=!0;const s=a(n);fetch(n.href,s)}})();const E="rayka_menu_products_v2",U="rayka_menu_logs_v2",R=[{id:crypto.randomUUID(),name:"پیتزا پپرونی",category:"فست‌فود",section:"پیتزا",description:"سوسیس پپرونی تند، پنیر پیتزا، فلفل دلمه، قارچ و سس مخصوص رایکا",price:285e3,stock:12,available:!0,image:""},{id:crypto.randomUUID(),name:"چیکن آلفردو",category:"غذای اصلی",section:"پاستا",description:"پاستا، فیله مرغ، سس آلفردو، قارچ و پنیر پارمزان",price:32e4,stock:8,available:!0,image:""},{id:crypto.randomUUID(),name:"کباب مخصوص رایکا",category:"کباب",section:"کباب",description:"کباب مخصوص سرآشپز، برنج ایرانی، گوجه کبابی و کره",price:42e4,stock:5,available:!0,image:""},{id:crypto.randomUUID(),name:"برگر ویژه رایکا",category:"فست‌فود",section:"برگر",description:"گوشت گریل‌شده، پنیر چدار، قارچ، کاهو، گوجه و سس مخصوص",price:31e4,stock:0,available:!1,image:""},{id:crypto.randomUUID(),name:"نوشابه",category:"نوشیدنی",section:"نوشیدنی",description:"نوشیدنی خنک",price:45e3,stock:24,available:!0,image:""},{id:crypto.randomUUID(),name:"آب معدنی",category:"نوشیدنی",section:"نوشیدنی",description:"آب معدنی خنک",price:25e3,stock:30,available:!0,image:""}],q=["همه","غذای اصلی","فست‌فود","کباب","نوشیدنی","پاستا","برگر","پیتزا"];let c=M(),y=x(),g="همه",h=!1;const D=document.querySelector("#app");function M(){try{const e=localStorage.getItem(E);return e?JSON.parse(e):R}catch{return R}}function A(){localStorage.setItem(E,JSON.stringify(c))}function x(){try{return JSON.parse(localStorage.getItem(U)||"[]")}catch{return[]}}function C(){localStorage.setItem(U,JSON.stringify(y))}function v(e,t,a=""){y.unshift({id:crypto.randomUUID(),action:e,productName:t,details:a,time:new Date().toLocaleString("fa-IR")}),y=y.slice(0,300),C()}function K(e){return new Intl.NumberFormat("en-US").format(Number(e||0))+" تومان"}function u(e=""){return String(e).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function T(){return`
     <div class="image-fallback">
       <span>R</span>
       <small>RAYKA</small>
     </div>
-  `}function F(e){return e.image?`
+  `}function Y(e){return e.image?`
     <img
       src="${e.image}"
       alt="${u(e.name)}"
@@ -15,11 +15,11 @@
       <span>R</span>
       <small>RAYKA</small>
     </div>
-  `:I()}function T(){return g==="همه"?c:c.filter(e=>e.category===g||e.section===g)}function Y(e){const t=e.available&&e.stock>0;return`
+  `:T()}function I(){return g==="همه"?c:c.filter(e=>e.category===g||e.section===g)}function F(e){const t=e.available&&e.stock>0;return`
     <article class="product-card ${t?"":"is-unavailable"}">
 
       <div class="product-media">
-        ${F(e)}
+        ${Y(e)}
 
         <div class="availability-badge ${t?"available":"unavailable"}">
           <span class="status-dot"></span>
@@ -40,10 +40,10 @@
         </p>
 
         <div class="product-meta">
-          <strong class="product-price">${x(e.price)}</strong>
+          <strong class="product-price">${K(e.price)}</strong>
 
-          <span class="stock-label ${e.stock<=2?"low":""}">
-            ${t?`موجودی: ${new Intl.NumberFormat("fa-IR").format(e.stock)}`:"اتمام موجودی"}
+          <span class="stock-label ${t?"available-text":"unavailable-text"}">
+            ${t?"موجود":"ناموجود"}
           </span>
         </div>
 
@@ -67,7 +67,7 @@
 
       </div>
     </article>
-  `}function A(){const e=document.querySelector("#categories");e.innerHTML=U.map(t=>`
+  `}function S(){const e=document.querySelector("#categories");e.innerHTML=q.map(t=>`
     <button
       type="button"
       class="category-btn ${g===t?"active":""}"
@@ -75,13 +75,13 @@
     >
       ${t}
     </button>
-  `).join(""),e.querySelectorAll(".category-btn").forEach(t=>{t.addEventListener("click",()=>{g=t.dataset.category,A(),m()})})}function m(){const e=document.querySelector("#products"),t=T();e.innerHTML=t.length?t.map(Y).join(""):`
+  `).join(""),e.querySelectorAll(".category-btn").forEach(t=>{t.addEventListener("click",()=>{g=t.dataset.category,S(),m()})})}function m(){const e=document.querySelector("#products"),t=I();e.innerHTML=t.length?t.map(F).join(""):`
       <div class="empty-state">
         <div>🍽️</div>
         <h3>محصولی پیدا نشد</h3>
         <p>در این دسته هنوز محصولی ثبت نشده است.</p>
       </div>
-    `,_()}function _(){document.querySelectorAll(".edit-product").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);t&&H(t)})}),document.querySelectorAll(".stock-plus").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);t&&(t.stock++,t.stock>0&&(t.available=!0),v("افزایش موجودی",t.name,`موجودی جدید: ${t.stock}`),k(),m())})}),document.querySelectorAll(".stock-minus").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);!t||t.stock<=0||(t.stock--,t.stock===0&&(t.available=!1),v("کاهش موجودی",t.name,`موجودی جدید: ${t.stock}`),k(),m())})})}function H(e=null){const t=!!e,a=document.createElement("div");a.className="modal-overlay",a.innerHTML=`
+    `,_()}function _(){document.querySelectorAll(".edit-product").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);t&&H(t)})}),document.querySelectorAll(".stock-plus").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);t&&(t.stock++,t.stock>0&&(t.available=!0),v("افزایش موجودی",t.name,`موجودی جدید: ${t.stock}`),A(),m())})}),document.querySelectorAll(".stock-minus").forEach(e=>{e.addEventListener("click",()=>{const t=c.find(a=>a.id===e.dataset.id);!t||t.stock<=0||(t.stock--,t.stock===0&&(t.available=!1),v("کاهش موجودی",t.name,`موجودی جدید: ${t.stock}`),A(),m())})})}function H(e=null){const t=!!e,a=document.createElement("div");a.className="modal-overlay",a.innerHTML=`
     <div class="modal product-modal">
 
       <div class="modal-header">
@@ -116,7 +116,7 @@
           <label>
             دسته‌بندی
             <select name="category">
-              ${U.filter(o=>o!=="همه").map(o=>`
+              ${q.filter(o=>o!=="همه").map(o=>`
                   <option
                     value="${o}"
                     ${t&&e.category===o?"selected":""}
@@ -200,7 +200,7 @@
         </label>
 
         <div id="image-preview" class="image-preview">
-          ${t&&e.image?`<img src="${e.image}" alt="preview">`:I()}
+          ${t&&e.image?`<img src="${e.image}" alt="preview">`:T()}
         </div>
 
         <div class="modal-actions">
@@ -229,7 +229,7 @@
     </div>
   `,document.body.appendChild(a);const d=()=>a.remove();a.querySelector(".modal-close").onclick=d,a.querySelector(".modal-cancel").onclick=d;const n=a.querySelector("#product-image-input"),s=a.querySelector("#image-preview");let l=t?e.image:"";n.addEventListener("change",()=>{const o=n.files?.[0];if(!o)return;if(o.size>3*1024*1024){alert("حجم عکس نباید بیشتر از 3 مگابایت باشد."),n.value="";return}if(!["image/jpeg","image/png","image/webp","image/avif"].includes(o.type)){alert("فرمت عکس مجاز نیست."),n.value="";return}const r=new FileReader;r.onload=p=>{l=p.target.result,s.innerHTML=`
         <img src="${l}" alt="preview">
-      `},r.readAsDataURL(o)}),a.querySelector("#product-form").addEventListener("submit",o=>{o.preventDefault();const i=new FormData(o.currentTarget),r=String(i.get("name")||"").trim(),p=String(i.get("category")||"").trim(),$=String(i.get("section")||"").trim()||p,w=String(i.get("description")||"").trim(),f=Number(i.get("price")),b=Math.max(0,Number(i.get("stock"))),O=i.get("available")==="on";if(!r){alert("نام محصول را وارد کن.");return}if(!Number.isFinite(f)||f<0){alert("قیمت محصول صحیح نیست.");return}if(!Number.isFinite(b)||b<0){alert("موجودی محصول صحیح نیست.");return}const R=O&&b>0;if(t)Object.assign(e,{name:r,category:p,section:$,description:w,price:f,stock:b,available:R,image:l}),v("ویرایش محصول",r,"اطلاعات محصول ویرایش شد.");else{const P={id:crypto.randomUUID(),name:r,category:p,section:$,description:w,price:f,stock:b,available:R,image:l};c.push(P),v("افزودن محصول",r,"محصول جدید ثبت شد.")}k(),A(),m(),d()});const S=a.querySelector("#delete-product");S&&(S.onclick=()=>{confirm(`آیا مطمئنی «${e.name}» حذف شود؟`)&&(c=c.filter(i=>i.id!==e.id),v("حذف محصول",e.name,"محصول حذف شد."),k(),A(),m(),d())})}function j(){const e=document.createElement("div");e.className="modal-overlay",e.innerHTML=`
+      `},r.readAsDataURL(o)}),a.querySelector("#product-form").addEventListener("submit",o=>{o.preventDefault();const i=new FormData(o.currentTarget),r=String(i.get("name")||"").trim(),p=String(i.get("category")||"").trim(),$=String(i.get("section")||"").trim()||p,w=String(i.get("description")||"").trim(),f=Number(i.get("price")),b=Math.max(0,Number(i.get("stock"))),O=i.get("available")==="on";if(!r){alert("نام محصول را وارد کن.");return}if(!Number.isFinite(f)||f<0){alert("قیمت محصول صحیح نیست.");return}if(!Number.isFinite(b)||b<0){alert("موجودی محصول صحیح نیست.");return}const L=O&&b>0;if(t)Object.assign(e,{name:r,category:p,section:$,description:w,price:f,stock:b,available:L,image:l}),v("ویرایش محصول",r,"اطلاعات محصول ویرایش شد.");else{const P={id:crypto.randomUUID(),name:r,category:p,section:$,description:w,price:f,stock:b,available:L,image:l};c.push(P),v("افزودن محصول",r,"محصول جدید ثبت شد.")}A(),S(),m(),d()});const k=a.querySelector("#delete-product");k&&(k.onclick=()=>{confirm(`آیا مطمئنی «${e.name}» حذف شود؟`)&&(c=c.filter(i=>i.id!==e.id),v("حذف محصول",e.name,"محصول حذف شد."),A(),S(),m(),d())})}function j(){const e=document.createElement("div");e.className="modal-overlay",e.innerHTML=`
     <div class="modal about-modal">
 
       <button class="modal-close about-close" type="button">×</button>
@@ -388,4 +388,4 @@
       </section>
 
     </main>
-  `,document.querySelector("#welcome-close").onclick=()=>{document.querySelector("#welcome-screen")?.remove()},document.querySelector("#admin-button").onclick=()=>{h=!h,document.querySelector("#admin-button").classList.toggle("active",h),m()},document.querySelector("#about-button").onclick=j,A(),m(),N(),setTimeout(()=>{document.querySelector("#welcome-screen")?.classList.add("hide")},3e3)}function N(){const e=document.querySelector("#product-count");if(!e)return;const t=T().length;e.textContent=`${new Intl.NumberFormat("fa-IR").format(t)} محصول`}B();const G=new MutationObserver(()=>{N()});G.observe(document.querySelector("#products"),{childList:!0});
+  `,document.querySelector("#welcome-close").onclick=()=>{document.querySelector("#welcome-screen")?.remove()},document.querySelector("#admin-button").onclick=()=>{h=!h,document.querySelector("#admin-button").classList.toggle("active",h),m()},document.querySelector("#about-button").onclick=j,S(),m(),N(),setTimeout(()=>{document.querySelector("#welcome-screen")?.classList.add("hide")},3e3)}function N(){const e=document.querySelector("#product-count");if(!e)return;const t=I().length;e.textContent=`${new Intl.NumberFormat("fa-IR").format(t)} محصول`}B();const G=new MutationObserver(()=>{N()});G.observe(document.querySelector("#products"),{childList:!0});
